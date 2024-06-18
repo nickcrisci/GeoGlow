@@ -1,3 +1,4 @@
-GeoGlow/Friend-Service/register
-GeoGlow/Friend-Service/ping
-GeoGlow/Friend-Service/api
+TOPIC,QOS
+GeoGlow/Friend-Service/register,0
+GeoGlow/Friend-Service/ping,0
+GeoGlow/Friend-Service/api,0
