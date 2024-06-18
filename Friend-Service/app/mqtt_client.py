@@ -1,3 +1,4 @@
+import os
 import json
 import paho.mqtt.client as mqtt
 from database import register_friend
@@ -106,15 +107,14 @@ def __on_subscribe(client, userdata, mid, reason_code_list, properties):
             print(f"Broker granted the following QoS: {reason_code.value}")
 
 def create_and_connect_client():
+    mqtt_broker = os.environ["MQTT_BROKER_HOST"]
+    mqtt_port = int(os.environ["MQTT_BROKER_PORT"])
+
     print(f"Connecting to MQTT broker: {mqtt_broker} on port: {mqtt_port}")
+
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = __on_connect
     client.on_message = __on_message
     client.on_subscribe = __on_subscribe
     client.connect(mqtt_broker, mqtt_port)
     return client
-
-with open("mqtt_config.txt", "r") as f:
-    lines = f.readlines()
-    mqtt_broker = lines[0].split("=")[1].strip()
-    mqtt_port = int(lines[1].split("=")[1].strip())
