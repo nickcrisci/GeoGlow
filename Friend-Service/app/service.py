@@ -1,4 +1,10 @@
+import json
 import paho.mqtt.client as mqtt
+import pymongo
+
+db_client = pymongo.MongoClient("mongodb://mongo:27017/")
+db = db_client["friend_database"]
+collection = db["friend_collection"]
 
 with open("mqtt_config.txt", "r") as f:
     lines = f.readlines()
@@ -15,7 +21,7 @@ def get_sub_topics(filename):
 
 def on_message(client, userdata, msg):
     topic = msg.topic
-    print(topic)
+    payload = msg.payload.decode()
 
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code.is_failure:
