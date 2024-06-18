@@ -1,0 +1,3 @@
+GeoGlow/Friend-Service/register
+GeoGlow/Friend-Service/ping
+GeoGlow/Friend-Service/api
