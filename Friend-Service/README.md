@@ -1,16 +1,17 @@
-# Friend-Service
+# Friend Service
+This service is responsible for managing which friends and devices are available. As soon as the devices are turned on, they share this information via MQTT. The service sees the corresponding messages and stores the necessary information.
 
-Dieser Service ist dafür verantwortlich zu verwalten, welche Freunde und Geräte erreichbar sind. Sobald die Geräte eingeschaltet werden teilen diese das per MQTT mit. 
-Der Service sieht die entsprechenden Nachrichten und hinterlegt die notwendigen Informationen.
+In addition, the Friend Service receives a regular ping from the controllers. This ensures that only connections to devices that are actually online are established.
 
-Des Weiteren empfängt der Friend-Service einen regelmäßigen Ping von den Controllern. So wird sichergestellt, das auch nur die Verbindung zu Geräten, die auch tatsächlich online sind, hergestellt wird. 
+In a future version of this service, it is conceivable that appropriate permissions will also be managed here to ensure that only authorized friends are allowed to connect to the corresponding devices.
 
-In einer zukünftigen Version dieses Services ist es vorstellbar, dass hier auch entsprechende Berechtigungen verwaltet werden, um sicherzustellen, dass nur berechtigte Freunde sich mit den entsprechenden Geräten verbinden dürfen.
-
-## Ausführen des Images
-Damit der Service auch vernünftig ausgeführt werden kann muss eine `mqtt_config.txt` Datei hinzugefügt werden. Diese muss sich auf dem selben Level wie die `Dockerfile` befinden und folgenden Inhalt haben:
+## Starting the service
+For the service to be able to start the mqtt details have to be specified. To do this simply add a file named `mqtt_config.txt` to the app directory.
+This file should have the following content:
 ```txt
 MQTT_BROKER_HOST=<your_mqtt_broker_host>
 MQTT_BROKER_PORT=<your_mqtt_broker_port>
 ```
-`<your_mqtt_broker_host>` und `<your_mqtt_broker_port>` müssen entsprechend ausgetauscht werden.  
+`<your_mqtt_broker_host>` and `<your_mqtt_broker_port>` have to be specified accordingly.  
+
+After adding this file simply open up a terminal and use `docker compose build` followed by `docker compose up` to start the service.
