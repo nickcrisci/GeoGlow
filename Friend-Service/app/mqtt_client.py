@@ -3,6 +3,8 @@ import json
 import paho.mqtt.client as mqtt
 from database import register_friend, received_controller_ping, get_device_ids
 
+SERVICE_TOPIC = "GeoGlow/Friend-Service"
+
 def __get_sub_topics(filename):
     """
     Reads subscription topics and QoS levels from a file.
@@ -22,7 +24,7 @@ def __get_sub_topics(filename):
     with open(filename, "r", encoding="utf8") as f:
         lines = f.readlines()[1:]
         lines = [line.strip() for line in lines]
-        topics = [line.split(",")[0] for line in lines]
+        topics = [f"{SERVICE_TOPIC}/{line.split(",")[0]}" for line in lines]
         qos = [int(line.split(",")[1]) for line in lines]
         return list(zip(topics, qos))
     
@@ -38,9 +40,9 @@ def __on_message(client, userdata, msg):
         msg (mqtt.MQTTMessage): The received MQTT message object. It contains information about the topic, payload, QoS level, and retain flag.
     """
     topic = msg.topic
-    if topic == "GeoGlow/Friend-Service/register" or topic == "GeoGlow/Friend-Service/ping":
+    if topic == f"{SERVICE_TOPIC}/register" or topic == f"{SERVICE_TOPIC}/ping":
         __on_register_or_ping(msg)
-    elif topic == "GeoGlow/Friend-Service/api":
+    elif topic == f"{SERVICE_TOPIC}/api":
         __on_api(client, msg)
 
 def __on_connect(client, userdata, flags, reason_code, properties):
@@ -144,7 +146,7 @@ def __on_api(client, msg):
                 ]
             }
         ]
-        client.publish(f"GeoGlow/Friend-Service/Api/{friendId}", json.dumps(message))
+        client.publish(f"{SERVICE_TOPIC}/api/{friendId}", json.dumps(message))
 
 def create_and_connect_client():
     mqtt_broker = os.environ["MQTT_BROKER_HOST"]
