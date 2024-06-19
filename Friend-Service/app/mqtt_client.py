@@ -1,7 +1,7 @@
 import os
 import json
 import paho.mqtt.client as mqtt
-from database import register_friend
+from database import register_friend, received_controller_ping
 
 def __get_sub_topics(filename):
     """
@@ -39,25 +39,8 @@ def __on_message(client, userdata, msg):
     """
     topic = msg.topic
     payload = msg.payload.decode()
-    if topic == "GeoGlow/Friend-Service/register":
-        __on_register(payload)
-
-def __on_register(payload_json):
-    """
-    Processes a registration message received on the "GeoGlow/Friend-Service/register" topic.
-
-    This function handles incoming registration messages.
-    It parses the JSON payload to extract the controller ID
-    and checks if a document with that ID already exists in the database collection.
-    If not, it inserts a new document.
-
-    Parameters:
-        payload_json (str): The JSON-encoded payload of the registration message.
-        It is expected to contain a key "controller_id" with the unique identifier of the controller.
-    """
-    payload = json.loads(payload_json)
-    controller_id = payload["controller_id"]
-    register_friend(controller_id)
+    if topic == "GeoGlow/Friend-Service/register" or topic == "GeoGlow/Friend-Service/ping":
+        __on_register_or_ping(msg)
 
 def __on_connect(client, userdata, flags, reason_code, properties):
     """
@@ -105,6 +88,36 @@ def __on_subscribe(client, userdata, mid, reason_code_list, properties):
             print(f"Broker rejected you subscription: {reason_code}")
         else:
             print(f"Broker granted the following QoS: {reason_code.value}")
+
+"""
+The following functions are used for the different
+endpoints the service listenes on.
+
+on_register => Executed when a message arrives on the /register topic
+
+"""
+
+def __on_register_or_ping(msg):
+    """
+    Processes a registration message received on the "GeoGlow/Friend-Service/register" topic.
+
+    This function handles incoming registration messages.
+    It parses the JSON payload to extract the controller ID
+    and checks if a document with that ID already exists in the database collection.
+    If not, it inserts a new document.
+
+    Parameters:
+        payload_json (str): The JSON-encoded payload of the registration message.
+        It is expected to contain a key "controller_id" with the unique identifier of the controller.
+    """
+    topic = msg.topic
+    payload = json.loads(msg.payload.decode())
+    controller_id = payload["controller_id"]
+
+    if "register" in topic: 
+        register_friend(controller_id)
+    else: 
+        received_controller_ping(controller_id)
 
 def create_and_connect_client():
     mqtt_broker = os.environ["MQTT_BROKER_HOST"]
