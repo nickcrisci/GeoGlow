@@ -115,7 +115,7 @@ class MqttClient(private val context: Context) {
     }
 
     fun publish(uniqueId: String, friendId: String, payload: List<Array<Int>>) {
-        val pubTopic = "GeoGlow/$friendId/$uniqueId"
+        val pubTopic = "GeoGlow/$friendId/$uniqueId" //TODO: uniqueId wieder rausnehmen
         val jsonPayload = transformListToJson("color palette", payload)
 
         mqttClient.publishWith()
