@@ -1,7 +1,7 @@
 import os
 import json
 import paho.mqtt.client as mqtt
-from database import register_friend, received_controller_ping
+from database import register_friend, received_controller_ping, get_device_ids
 
 def __get_sub_topics(filename):
     """
@@ -38,9 +38,10 @@ def __on_message(client, userdata, msg):
         msg (mqtt.MQTTMessage): The received MQTT message object. It contains information about the topic, payload, QoS level, and retain flag.
     """
     topic = msg.topic
-    payload = msg.payload.decode()
     if topic == "GeoGlow/Friend-Service/register" or topic == "GeoGlow/Friend-Service/ping":
         __on_register_or_ping(msg)
+    elif topic == "GeoGlow/Friend-Service/api":
+        __on_api(client, msg)
 
 def __on_connect(client, userdata, flags, reason_code, properties):
     """
@@ -93,7 +94,7 @@ def __on_subscribe(client, userdata, mid, reason_code_list, properties):
 The following functions are used for the different
 endpoints the service listenes on.
 
-on_register => Executed when a message arrives on the /register topic
+__on_register_or_ping => Executed when a message arrives on the /register or /ping topic
 
 """
 
@@ -116,8 +117,34 @@ def __on_register_or_ping(msg):
 
     if "register" in topic: 
         register_friend(controller_id)
-    else: 
+    else:
         received_controller_ping(controller_id)
+
+def __on_api(client, msg):
+    payload = json.loads(msg.payload.decode())
+    friendId = payload["friendId"]
+    if payload["command"] == "requestFriendIDs":
+        # TODO: execute database function to get device ids of friends
+        deviceIds = get_device_ids()
+        message = [
+            {
+                "name": "Katy",
+                "device_ids": [
+                    "deviceId1",
+                    "deviceId2",
+                    "deviceId3"
+                ]
+            },
+            {
+                "name": "Finn",
+                "device_ids": [
+                    "deviceId1",
+                    "deviceId2",
+                    "deviceId3"
+                ]
+            }
+        ]
+        client.publish(f"GeoGlow/Friend-Service/Api/{friendId}", json.dumps(message))
 
 def create_and_connect_client():
     mqtt_broker = os.environ["MQTT_BROKER_HOST"]

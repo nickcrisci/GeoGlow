@@ -31,3 +31,8 @@ def received_controller_ping(controller_id):
         print(f"Updated timestamp of controller with ID '{controller_id}' successfully")
     else:
         register_friend(controller_id)
+
+# TODO: Read the device ids from database
+#   and return object
+def get_device_ids():
+    pass
