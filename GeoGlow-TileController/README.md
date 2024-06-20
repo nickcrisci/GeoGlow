@@ -12,4 +12,7 @@ Please add a ``config.h`` file with the following content:
 #define MQTT_PORT <Port-of-your-MQTT-Broker>
 
 #define NANOLEAF_BASE_URL "<Nanoleaf-Base-Url>"
+
+#define FRIEND_ID "<UUID>"
+#define DEVICE_ID "<UUID>"
 ````
