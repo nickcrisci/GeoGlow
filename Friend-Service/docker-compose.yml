@@ -1,0 +1,19 @@
+version: '1.1'
+services:
+  mongo:
+    image: mongo:latest
+    logging: 
+      driver: "none"
+
+  friend-service:
+    build: .
+    image: friend-service
+    env_file:
+      - mqtt_config.env
+    depends_on:
+      - mongo
+    volumes:
+      - ./app:/app
+    environment:
+      - MONGODB_HOST=mongo
+      - MONGODB_PORT=27017

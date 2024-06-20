@@ -1,0 +1,4 @@
+TOPIC,QOS
+register,0
+ping,0
+api,0
