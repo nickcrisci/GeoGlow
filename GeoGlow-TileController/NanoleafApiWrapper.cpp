@@ -2,17 +2,10 @@
 
 NanoleafApiWrapper::NanoleafApiWrapper(const String& serverName) {
   if (serverName == "") {
-    this->serverName = defaultServerName; // Verwende die Standard-URL
+    this->serverName = defaultServerName;
   } else {
-    this->serverName = serverName; // Verwende die angegebene URL
+    this->serverName = serverName;
   }
-  
-  // Extrahiere Hostname und Port
-  int index = this->serverName.indexOf(':', 7); // Suche nach Port, nach "http://"
-  String hostname = this->serverName.substring(7, index);
-  int port = this->serverName.substring(index + 1).toInt();
-  
-  httpClient = new HttpClient(wifiClient, hostname, port);
 }
 
 bool NanoleafApiWrapper::postToTest(const String& jsonPayload) {
@@ -25,21 +18,27 @@ bool NanoleafApiWrapper::postToTest2(const String& jsonPayload) {
 
 bool NanoleafApiWrapper::postData(const String& endpoint, const String& jsonPayload) {
   if (WiFi.status() == WL_CONNECTED) {
-    httpClient->beginRequest();
-    httpClient->post(endpoint);
-    httpClient->sendHeader("Content-Type", "application/json");
-    httpClient->sendHeader("Content-Length", jsonPayload.length());
-    httpClient->beginBody();
-    httpClient->print(jsonPayload);
-    httpClient->endRequest();
+    HTTPClient http;
+    WiFiClient wifiClient;
+    String url = serverName + endpoint;
 
-    int statusCode = httpClient->responseStatusCode();
-    String response = httpClient->responseBody();
+    http.begin(wifiClient, url);
+    http.addHeader("Content-Type", "application/json");
 
-    Serial.println(statusCode); // HTTP Response code
-    Serial.println(response);   // HTTP Response payload
+    int httpResponseCode = http.POST(jsonPayload);
 
-    return (statusCode > 0);
+    if (httpResponseCode > 0) {
+      String response = http.getString();
+      Serial.println(httpResponseCode);
+      Serial.println(response);
+      http.end();
+      return true;
+    } else {
+      Serial.print("Error on sending POST: ");
+      Serial.println(httpResponseCode);
+      http.end();
+      return false;
+    }
   } else {
     Serial.println("WiFi Disconnected");
     return false;

@@ -1,79 +1,90 @@
 #include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
 #include "NanoleafApiWrapper.h"
-#include "Adafruit_MQTT.h"
-#include "Adafruit_MQTT_Client.h"
 #include "config.h"
 
-WiFiClient client;
+WiFiClient wifiClient;
 NanoleafApiWrapper nanoleaf;
 
-Adafruit_MQTT_Client mqtt(&client, MQTT_BROKER, MQTT_PORT);
+PubSubClient client(wifiClient);
 
-Adafruit_MQTT_Subscribe test = Adafruit_MQTT_Subscribe(&mqtt, "test");
-
-
-void testCallback(char* x, uint16_t len) {
-  Serial.print("Hey we're in a test callback, the test value is: ");
-  //nanoleaf.postToTest("{}");
-  Serial.println(x);
-}
-
-void setup() {
-  Serial.begin(115200);
+void setup_wifi() {
   delay(10);
-
-  Serial.println(F("GeoGlow-TileController"));
-
-  Serial.println();
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(WLAN_SSID);
 
+  WiFi.mode(WIFI_STA);
   WiFi.begin(WLAN_SSID, WLAN_PASS);
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println();
 
+  randomSeed(micros());
+
+  Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+}
 
-  test.setCallback(testCallback);
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
 
-  mqtt.subscribe(&test);
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    String clientId = "TileController-";
+    clientId += String(random(0xffff), HEX);
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+
+      // List of Topics to Subscribe
+      client.subscribe("test");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  setup_wifi();
+  client.setServer(MQTT_BROKER, MQTT_PORT);
+  client.setCallback(callback);
+
+
 }
 
 void loop() {
-  MQTT_connect();
-  mqtt.processPackets(10000);
-  if (!mqtt.ping()) {
-    mqtt.disconnect();
+  if (!client.connected()) {
+    reconnect();
+  }else{
+    JsonDocument payload;
+
+    payload["controller_id"] = DEVICE_ID;
+
+    String sj;
+
+    serializeJson(payload, sj);
+    Serial.print("Data:");
+    Serial.println(sj);
+    Serial.println("Sending data...");
+    client.publish("GeoGlow/Friend-Service/register", sj.c_str() );
+    delay(5000);
   }
-}
-
-void MQTT_connect() {
-  int8_t ret;
-
-  if (mqtt.connected()) {
-    return;
-  }
-
-  Serial.print("Connecting to MQTT...");
-
-  uint8_t retries = 3;
-  while ((ret = mqtt.connect()) != 0) {  // connect will return 0 for connected
-    Serial.println(mqtt.connectErrorString(ret));
-    Serial.println("Retrying MQTT connection in 10 seconds...");
-    mqtt.disconnect();
-    delay(10000);  // wait 10 seconds
-    retries--;
-    if (retries == 0) {
-      // basically die and wait for WDT to reset me
-      while (1)
-        ;
-    }
-  }
-  Serial.println("MQTT Connected!");
+  client.loop();
 }
