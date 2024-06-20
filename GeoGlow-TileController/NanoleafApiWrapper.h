@@ -2,16 +2,13 @@
 #define NanoleafApiWrapper_h
 
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include <ArduinoHttpClient.h>
+#include <ESP8266HTTPClient.h>
 #include "config.h"
 
 class NanoleafApiWrapper {
   private:
     String serverName;
-    const String defaultServerName = NANOLEAF_BASE_URL;
-    WiFiClient wifiClient;
-    HttpClient* httpClient;
+    const String defaultServerName = NANOLEAF_BASE_URL; // Standard-URL
 
   public:
     NanoleafApiWrapper(const String& serverName = "");
