@@ -13,6 +13,6 @@ Please add a ``config.h`` file with the following content:
 
 #define NANOLEAF_BASE_URL "<Nanoleaf-Base-Url>"
 
-#define FRIEND_ID "<UUID>"
-#define DEVICE_ID "<UUID>"
+#define FRIEND_ID "<Friend-UUID>"
+#define DEVICE_ID "<Device-UUID>"
 ````
