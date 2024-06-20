@@ -44,8 +44,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
-    String clientId = "TileController-";
-    clientId += String(random(0xffff), HEX);
+    String clientId = "TileController-" + DEVICE_ID;
     if (client.connect(clientId.c_str())) {
       Serial.println("connected");
 
@@ -65,8 +64,6 @@ void setup() {
   setup_wifi();
   client.setServer(MQTT_BROKER, MQTT_PORT);
   client.setCallback(callback);
-
-
 }
 
 void loop() {
