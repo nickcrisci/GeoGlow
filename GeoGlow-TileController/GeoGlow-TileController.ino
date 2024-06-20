@@ -73,17 +73,17 @@ void loop() {
   if (!client.connected()) {
     reconnect();
   }else{
-    JsonDocument payload;
+    JsonDocument jsonPayload;
 
-    payload["controller_id"] = DEVICE_ID;
+    jsonPayload["controller_id"] = DEVICE_ID;
 
-    String sj;
+    String stringPayload;
 
-    serializeJson(payload, sj);
+    serializeJson(jsonPayload, stringPayload);
     Serial.print("Data:");
-    Serial.println(sj);
+    Serial.println(stringPayload);
     Serial.println("Sending data...");
-    client.publish("GeoGlow/Friend-Service/register", sj.c_str() );
+    client.publish("GeoGlow/Friend-Service/register", stringPayload.c_str() );
     delay(5000);
   }
   client.loop();
