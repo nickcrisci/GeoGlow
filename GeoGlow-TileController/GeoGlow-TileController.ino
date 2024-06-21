@@ -2,15 +2,12 @@
 #include "MQTTClient.h"
 #include "config.h"
 
-
 #include "TestAdapter.h"
-
 
 WiFiClient wifiClient;
 MQTTClient mqttClient(MQTT_BROKER, MQTT_PORT, wifiClient);
 
-
-TestAdapter testAdapter("test/#");
+TestAdapter testAdapter;
 
 void setup() {
     Serial.begin(115200);

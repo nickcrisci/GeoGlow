@@ -4,6 +4,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <vector>
+#include <ArduinoJson.h>
 #include "TopicAdapter.h"
 
 class MQTTClient {
@@ -15,6 +16,7 @@ public:
 private:
     void reconnect();
     static void callback(char* topic, byte* payload, unsigned int length);
+    static bool matches(const char* subscribedTopic, char* receivedTopic);
 
     const char* mqttBroker;
     const int mqttPort;

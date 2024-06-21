@@ -40,17 +40,70 @@ void MQTTClient::addTopicAdapter(TopicAdapter* adapter) {
 }
 
 void MQTTClient::callback(char* topic, byte* payload, unsigned int length) {
+    // Create a buffer for the payload
+    char payloadBuffer[length + 1];
+    memcpy(payloadBuffer, payload, length);
+    payloadBuffer[length] = '\0'; // Null-terminate the string
+
+    // Attempt to parse the payload as JSON
+    DynamicJsonDocument jsonDocument(200); // Adjust the size according to your payload
+    DeserializationError error = deserializeJson(jsonDocument, payloadBuffer);
+
+    // Check if parsing succeeded
+    if (error) {
+        // Parsing failed, treat payload as plain string
+        Serial.print("Unhandled message [");
+        Serial.print(topic);
+        Serial.print("] ");
+        Serial.println(payloadBuffer);
+        return;
+    }
+
+    // JSON parsing succeeded, call adapter callback with JsonDocument
     for (auto adapter : topicAdapters) {
-        if (strcmp(topic, adapter->getTopic()) == 0) {
-            adapter->callback(topic, payload, length);
+        if (matches(adapter->getTopic(), topic)) {
+            adapter->callback(topic, jsonDocument.as<JsonObject>(), length);
             return;
         }
     }
+
+    // If no adapter handles the topic
     Serial.print("Unhandled message [");
     Serial.print(topic);
     Serial.print("] ");
-    for (unsigned int i = 0; i < length; i++) {
-        Serial.print((char)payload[i]);
+    Serial.println(payloadBuffer);
+}
+
+bool MQTTClient::matches(const char* subscribedTopic, char* receivedTopic) {
+    const char* wildCardPos = strchr(subscribedTopic, '#');
+    if (wildCardPos != NULL) {
+        // Check if the '#' is at the end of the subscribed topic
+        if (wildCardPos[1] == '\0') {
+            // Remove the '#' and the trailing slash (if present) from subscribedTopic
+            size_t subscribedTopicLength = wildCardPos - subscribedTopic;
+            if (subscribedTopicLength > 0 && subscribedTopic[subscribedTopicLength - 1] == '/') {
+                subscribedTopicLength--;
+            }
+            // Compare the first subscribedTopicLength characters
+            return strncmp(subscribedTopic, receivedTopic, subscribedTopicLength) == 0;
+        }
+        // If '#' is not at the end, it's not a valid subscription
+        return false;
     }
-    Serial.println();
+
+    const char* plusPos = strchr(subscribedTopic, '+');
+    if (plusPos != NULL) {
+        // Check if the '+' is part of a complete level
+        const char* slashPos = strchr(receivedTopic, '/');
+        if (slashPos == NULL) {
+            // If there's no next level, the match is valid
+            return true;
+        }
+        // Compare until the slash
+        return strncmp(subscribedTopic, receivedTopic, plusPos - subscribedTopic) == 0 &&
+               strcmp(plusPos + 1, slashPos + 1) == 0;
+    }
+
+    // Regular topic matching
+    return strcmp(subscribedTopic, receivedTopic) == 0;
 }
