@@ -3,6 +3,7 @@
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <ArduinoJson.h>
 #include "config.h"
 
 class NanoleafApiWrapper {
@@ -12,11 +13,11 @@ class NanoleafApiWrapper {
 
   public:
     NanoleafApiWrapper(const String& serverName = "");
-    bool postToTest(const String& jsonPayload);
-    bool postToTest2(const String& jsonPayload);
+    bool postToTest(const JsonDocument& jsonPayload);
+    bool postToTest2(const JsonDocument& jsonPayload);
 
   private:
-    bool postData(const String& endpoint, const String& jsonPayload);
+    bool postData(const String& endpoint, const JsonDocument& jsonPayload);
 };
 
 #endif
