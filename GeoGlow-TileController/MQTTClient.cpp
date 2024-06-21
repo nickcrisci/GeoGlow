@@ -40,19 +40,38 @@ void MQTTClient::addTopicAdapter(TopicAdapter* adapter) {
 }
 
 void MQTTClient::callback(char* topic, byte* payload, unsigned int length) {
+    // Create a buffer for the payload
+    char payloadBuffer[length + 1];
+    memcpy(payloadBuffer, payload, length);
+    payloadBuffer[length] = '\0'; // Null-terminate the string
+
+    // Attempt to parse the payload as JSON
+    DynamicJsonDocument jsonDocument(200); // Adjust the size according to your payload
+    DeserializationError error = deserializeJson(jsonDocument, payloadBuffer);
+
+    // Check if parsing succeeded
+    if (error) {
+        // Parsing failed, treat payload as plain string
+        Serial.print("Unhandled message [");
+        Serial.print(topic);
+        Serial.print("] ");
+        Serial.println(payloadBuffer);
+        return;
+    }
+
+    // JSON parsing succeeded, call adapter callback with JsonDocument
     for (auto adapter : topicAdapters) {
         if (matches(adapter->getTopic(), topic)) {
-            adapter->callback(topic, payload, length);
+            adapter->callback(topic, jsonDocument.as<JsonObject>(), length);
             return;
         }
     }
+
+    // If no adapter handles the topic
     Serial.print("Unhandled message [");
     Serial.print(topic);
     Serial.print("] ");
-    for (unsigned int i = 0; i < length; i++) {
-        Serial.print((char)payload[i]);
-    }
-    Serial.println();
+    Serial.println(payloadBuffer);
 }
 
 bool MQTTClient::matches(const char* subscribedTopic, char* receivedTopic) {

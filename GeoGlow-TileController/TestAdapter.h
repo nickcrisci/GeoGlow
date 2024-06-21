@@ -11,14 +11,12 @@ public:
         return "test/#";
     }
 
-    void callback(char* topic, byte* payload, unsigned int length) override {
-        Serial.print("Message arrived in TestAdapter [");
+    void callback(char* topic, const JsonObject& payload, unsigned int length) override {
+        int value = payload["value"];
+        Serial.print("Received value from topic '");
         Serial.print(topic);
-        Serial.print("] ");
-        for (unsigned int i = 0; i < length; i++) {
-            Serial.print((char)payload[i]);
-        }
-        Serial.println();
+        Serial.print("': ");
+        Serial.println(value);
     }
 
 private:

@@ -4,6 +4,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <vector>
+#include <ArduinoJson.h>
 #include "TopicAdapter.h"
 
 class MQTTClient {
