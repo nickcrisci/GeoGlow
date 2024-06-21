@@ -8,15 +8,15 @@ NanoleafApiWrapper::NanoleafApiWrapper(const String& serverName) {
   }
 }
 
-bool NanoleafApiWrapper::postToTest(const String& jsonPayload) {
+bool NanoleafApiWrapper::postToTest(const JsonDocument& jsonPayload) {
   return postData("/test", jsonPayload);
 }
 
-bool NanoleafApiWrapper::postToTest2(const String& jsonPayload) {
+bool NanoleafApiWrapper::postToTest2(const JsonDocument& jsonPayload) {
   return postData("/test2", jsonPayload);
 }
 
-bool NanoleafApiWrapper::postData(const String& endpoint, const String& jsonPayload) {
+bool NanoleafApiWrapper::postData(const String& endpoint, const JsonDocument& jsonPayload) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     WiFiClient wifiClient;
@@ -25,7 +25,10 @@ bool NanoleafApiWrapper::postData(const String& endpoint, const String& jsonPayl
     http.begin(wifiClient, url);
     http.addHeader("Content-Type", "application/json");
 
-    int httpResponseCode = http.POST(jsonPayload);
+    String stringPayload;
+    serializeJson(jsonPayload, stringPayload);
+
+    int httpResponseCode = http.POST(stringPayload);
 
     if (httpResponseCode > 0) {
       String response = http.getString();
