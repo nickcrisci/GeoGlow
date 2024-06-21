@@ -41,7 +41,7 @@ void MQTTClient::addTopicAdapter(TopicAdapter* adapter) {
 
 void MQTTClient::callback(char* topic, byte* payload, unsigned int length) {
     for (auto adapter : topicAdapters) {
-        if (strcmp(topic, adapter->getTopic()) == 0) {
+        if (matches(adapter->getTopic(), topic)) {
             adapter->callback(topic, payload, length);
             return;
         }
@@ -53,4 +53,38 @@ void MQTTClient::callback(char* topic, byte* payload, unsigned int length) {
         Serial.print((char)payload[i]);
     }
     Serial.println();
+}
+
+bool MQTTClient::matches(const char* subscribedTopic, char* receivedTopic) {
+    const char* wildCardPos = strchr(subscribedTopic, '#');
+    if (wildCardPos != NULL) {
+        // Check if the '#' is at the end of the subscribed topic
+        if (wildCardPos[1] == '\0') {
+            // Remove the '#' and the trailing slash (if present) from subscribedTopic
+            size_t subscribedTopicLength = wildCardPos - subscribedTopic;
+            if (subscribedTopicLength > 0 && subscribedTopic[subscribedTopicLength - 1] == '/') {
+                subscribedTopicLength--;
+            }
+            // Compare the first subscribedTopicLength characters
+            return strncmp(subscribedTopic, receivedTopic, subscribedTopicLength) == 0;
+        }
+        // If '#' is not at the end, it's not a valid subscription
+        return false;
+    }
+
+    const char* plusPos = strchr(subscribedTopic, '+');
+    if (plusPos != NULL) {
+        // Check if the '+' is part of a complete level
+        const char* slashPos = strchr(receivedTopic, '/');
+        if (slashPos == NULL) {
+            // If there's no next level, the match is valid
+            return true;
+        }
+        // Compare until the slash
+        return strncmp(subscribedTopic, receivedTopic, plusPos - subscribedTopic) == 0 &&
+               strcmp(plusPos + 1, slashPos + 1) == 0;
+    }
+
+    // Regular topic matching
+    return strcmp(subscribedTopic, receivedTopic) == 0;
 }
