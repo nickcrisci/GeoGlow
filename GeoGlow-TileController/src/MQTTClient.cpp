@@ -1,8 +1,8 @@
 #include "MQTTClient.h"
 
-std::vector<TopicAdapter*> MQTTClient::topicAdapters;
+std::vector<TopicAdapter *> MQTTClient::topicAdapters;
 
-MQTTClient::MQTTClient(const char* mqttBroker, const int mqttPort, WiFiClient& wifiClient)
+MQTTClient::MQTTClient(const char *mqttBroker, const int mqttPort, WiFiClient &wifiClient)
     : mqttBroker(mqttBroker), mqttPort(mqttPort), client(wifiClient) {
     client.setServer(mqttBroker, mqttPort);
     client.setCallback(MQTTClient::callback);
@@ -20,7 +20,7 @@ void MQTTClient::reconnect() {
         Serial.print("Attempting MQTT connection...");
         if (client.connect("ESP8266Client")) {
             Serial.println("connected");
-            for (auto adapter : topicAdapters) {
+            for (auto adapter: topicAdapters) {
                 client.subscribe(adapter->getTopic());
             }
         } else {
@@ -32,25 +32,34 @@ void MQTTClient::reconnect() {
     }
 }
 
-void MQTTClient::addTopicAdapter(TopicAdapter* adapter) {
+void MQTTClient::publish(const char *topic, const JsonDocument &jsonPayload) {
+    if (client.connected()) {
+        char buffer[512]; // Adjust the buffer size according to your payload size
+        size_t n = serializeJson(jsonPayload, buffer);
+        client.publish(topic, buffer, n);
+    } else {
+        Serial.println("MQTT client not connected. Unable to publish message.");
+    }
+}
+
+void MQTTClient::addTopicAdapter(TopicAdapter *adapter) {
     topicAdapters.push_back(adapter);
     if (client.connected()) {
         client.subscribe(adapter->getTopic());
     }
 }
 
-void MQTTClient::callback(char* topic, byte* payload, unsigned int length) {
+void MQTTClient::callback(char *topic, const byte *payload, unsigned int length) {
     // Create a buffer for the payload
     char payloadBuffer[length + 1];
     memcpy(payloadBuffer, payload, length);
     payloadBuffer[length] = '\0'; // Null-terminate the string
 
     // Attempt to parse the payload as JSON
-    DynamicJsonDocument jsonDocument(200); // Adjust the size according to your payload
-    DeserializationError error = deserializeJson(jsonDocument, payloadBuffer);
+    JsonDocument jsonDocument; // Adjust the size according to your payload
 
     // Check if parsing succeeded
-    if (error) {
+    if (deserializeJson(jsonDocument, payloadBuffer)) {
         // Parsing failed, treat payload as plain string
         Serial.print("Unhandled message [");
         Serial.print(topic);
@@ -60,7 +69,7 @@ void MQTTClient::callback(char* topic, byte* payload, unsigned int length) {
     }
 
     // JSON parsing succeeded, call adapter callback with JsonDocument
-    for (auto adapter : topicAdapters) {
+    for (const auto adapter: topicAdapters) {
         if (matches(adapter->getTopic(), topic)) {
             adapter->callback(topic, jsonDocument.as<JsonObject>(), length);
             return;
@@ -74,9 +83,8 @@ void MQTTClient::callback(char* topic, byte* payload, unsigned int length) {
     Serial.println(payloadBuffer);
 }
 
-bool MQTTClient::matches(const char* subscribedTopic, char* receivedTopic) {
-    const char* wildCardPos = strchr(subscribedTopic, '#');
-    if (wildCardPos != NULL) {
+bool MQTTClient::matches(const char *subscribedTopic, const char *receivedTopic) {
+    if (const char *wildCardPos = strchr(subscribedTopic, '#'); wildCardPos != nullptr) {
         // Check if the '#' is at the end of the subscribed topic
         if (wildCardPos[1] == '\0') {
             // Remove the '#' and the trailing slash (if present) from subscribedTopic
@@ -91,11 +99,11 @@ bool MQTTClient::matches(const char* subscribedTopic, char* receivedTopic) {
         return false;
     }
 
-    const char* plusPos = strchr(subscribedTopic, '+');
-    if (plusPos != NULL) {
+    const char *plusPos = strchr(subscribedTopic, '+');
+    if (plusPos != nullptr) {
         // Check if the '+' is part of a complete level
-        const char* slashPos = strchr(receivedTopic, '/');
-        if (slashPos == NULL) {
+        const char *slashPos = strchr(receivedTopic, '/');
+        if (slashPos == nullptr) {
             // If there's no next level, the match is valid
             return true;
         }
