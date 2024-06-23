@@ -1,6 +1,6 @@
 FROM python:slim
 
-WORKDIR /app
+WORKDIR /service
 
 COPY requirements.txt .
 

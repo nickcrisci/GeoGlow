@@ -1,9 +1,10 @@
-import time
+from datetime import datetime, UTC
 import pymongo
 
 client = pymongo.MongoClient("mongodb://mongo:27017/")
 db = client["friend_database"]
 collection = db["friend_collection"]
+collection.create_index({"_timestamp": 1}, expireAfterSeconds= 5 * 60)
 
 def register_friend(friendId, deviceId):
     """
@@ -18,17 +19,17 @@ def register_friend(friendId, deviceId):
     data = {
         "friendId": friendId,
         "deviceId": deviceId,
-        "_timestamp": time.time() 
+        "_timestamp": datetime.now(UTC)
     }
     result = collection.insert_one(data)
     print(f"Document inserted successfully! ID: {result.inserted_id}")
 
 def received_controller_ping(payload):
-    timestamp = time.time()
-    update = {"$set": {"timestamp": timestamp}}
+    timestamp = datetime.now(UTC)
+    update = {"$set": {"_timestamp": timestamp}}
     friendId, deviceId = payload["deviceId"], payload["friendId"]
-    update_result = collection.update_one({"deviceId": deviceId}, update, upsert = True)  
-    
+    update_result = collection.update_one({"deviceId": deviceId}, update, upsert = True)
+
     # First ping is a register
     if update_result.modified_count == 1:
         print(f"Updated timestamp of controller with ID '{deviceId}' successfully")
