@@ -5,7 +5,7 @@ std::vector<TopicAdapter *> MQTTClient::topicAdapters;
 MQTTClient::MQTTClient(const char *mqttBroker, const int mqttPort, WiFiClient &wifiClient)
     : mqttBroker(mqttBroker), mqttPort(mqttPort), client(wifiClient) {
     client.setServer(mqttBroker, mqttPort);
-    client.setCallback(MQTTClient::callback);
+    client.setCallback(callback);
 }
 
 void MQTTClient::loop() {
@@ -20,7 +20,7 @@ void MQTTClient::reconnect() {
         Serial.print("Attempting MQTT connection...");
         if (client.connect("ESP8266Client")) {
             Serial.println("connected");
-            for (auto adapter: topicAdapters) {
+            for (const auto adapter: topicAdapters) {
                 client.subscribe(adapter->getTopic());
             }
         } else {
@@ -34,8 +34,8 @@ void MQTTClient::reconnect() {
 
 void MQTTClient::publish(const char *topic, const JsonDocument &jsonPayload) {
     if (client.connected()) {
-        char buffer[512]; // Adjust the buffer size according to your payload size
-        size_t n = serializeJson(jsonPayload, buffer);
+        char buffer[512];
+        const size_t n = serializeJson(jsonPayload, buffer);
         client.publish(topic, buffer, n);
     } else {
         Serial.println("MQTT client not connected. Unable to publish message.");
@@ -50,17 +50,13 @@ void MQTTClient::addTopicAdapter(TopicAdapter *adapter) {
 }
 
 void MQTTClient::callback(char *topic, const byte *payload, unsigned int length) {
-    // Create a buffer for the payload
     char payloadBuffer[length + 1];
     memcpy(payloadBuffer, payload, length);
-    payloadBuffer[length] = '\0'; // Null-terminate the string
+    payloadBuffer[length] = '\0';
 
-    // Attempt to parse the payload as JSON
-    JsonDocument jsonDocument; // Adjust the size according to your payload
+    JsonDocument jsonDocument;
 
-    // Check if parsing succeeded
     if (deserializeJson(jsonDocument, payloadBuffer)) {
-        // Parsing failed, treat payload as plain string
         Serial.print("Unhandled message [");
         Serial.print(topic);
         Serial.print("] ");
@@ -68,7 +64,6 @@ void MQTTClient::callback(char *topic, const byte *payload, unsigned int length)
         return;
     }
 
-    // JSON parsing succeeded, call adapter callback with JsonDocument
     for (const auto adapter: topicAdapters) {
         if (matches(adapter->getTopic(), topic)) {
             adapter->callback(topic, jsonDocument.as<JsonObject>(), length);
@@ -76,7 +71,6 @@ void MQTTClient::callback(char *topic, const byte *payload, unsigned int length)
         }
     }
 
-    // If no adapter handles the topic
     Serial.print("Unhandled message [");
     Serial.print(topic);
     Serial.print("] ");
@@ -85,33 +79,25 @@ void MQTTClient::callback(char *topic, const byte *payload, unsigned int length)
 
 bool MQTTClient::matches(const char *subscribedTopic, const char *receivedTopic) {
     if (const char *wildCardPos = strchr(subscribedTopic, '#'); wildCardPos != nullptr) {
-        // Check if the '#' is at the end of the subscribed topic
         if (wildCardPos[1] == '\0') {
-            // Remove the '#' and the trailing slash (if present) from subscribedTopic
             size_t subscribedTopicLength = wildCardPos - subscribedTopic;
             if (subscribedTopicLength > 0 && subscribedTopic[subscribedTopicLength - 1] == '/') {
                 subscribedTopicLength--;
             }
-            // Compare the first subscribedTopicLength characters
             return strncmp(subscribedTopic, receivedTopic, subscribedTopicLength) == 0;
         }
-        // If '#' is not at the end, it's not a valid subscription
         return false;
     }
 
     const char *plusPos = strchr(subscribedTopic, '+');
     if (plusPos != nullptr) {
-        // Check if the '+' is part of a complete level
         const char *slashPos = strchr(receivedTopic, '/');
         if (slashPos == nullptr) {
-            // If there's no next level, the match is valid
             return true;
         }
-        // Compare until the slash
         return strncmp(subscribedTopic, receivedTopic, plusPos - subscribedTopic) == 0 &&
                strcmp(plusPos + 1, slashPos + 1) == 0;
     }
 
-    // Regular topic matching
     return strcmp(subscribedTopic, receivedTopic) == 0;
 }

@@ -4,9 +4,12 @@
 #include <ArduinoJson.h>
 
 class TopicAdapter {
-    public:
-        virtual const char* getTopic() const = 0;
-        virtual void callback(char* topic, const JsonObject& payload, unsigned int length) = 0;
+public:
+    virtual ~TopicAdapter() = default;
+
+    virtual const char *getTopic() const = 0;
+
+    virtual void callback(char *topic, const JsonObject &payload, unsigned int length) = 0;
 };
 
 #endif

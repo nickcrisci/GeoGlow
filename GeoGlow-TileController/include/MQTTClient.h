@@ -8,21 +8,26 @@
 #include "TopicAdapter.h"
 
 class MQTTClient {
-    public:
-        MQTTClient(const char* mqttBroker, int mqttPort, WiFiClient& wifiClient);
-        void loop();
-        void publish(const char* topic, const JsonDocument& jsonPayload);
-        void addTopicAdapter(TopicAdapter* adapter);
+public:
+    MQTTClient(const char *mqttBroker, int mqttPort, WiFiClient &wifiClient);
 
-    private:
-        void reconnect();
-        static void callback(char* topic, const byte* payload, unsigned int length);
-        static bool matches(const char* subscribedTopic, const char* receivedTopic);
+    void loop();
 
-        const char* mqttBroker;
-        const int mqttPort;
-        PubSubClient client;
-        static std::vector<TopicAdapter*> topicAdapters;
+    void publish(const char *topic, const JsonDocument &jsonPayload);
+
+    void addTopicAdapter(TopicAdapter *adapter);
+
+private:
+    void reconnect();
+
+    static void callback(char *topic, const byte *payload, unsigned int length);
+
+    static bool matches(const char *subscribedTopic, const char *receivedTopic);
+
+    const char *mqttBroker;
+    const int mqttPort;
+    PubSubClient client;
+    static std::vector<TopicAdapter *> topicAdapters;
 };
 
 #endif

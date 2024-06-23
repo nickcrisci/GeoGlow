@@ -7,17 +7,21 @@
 #include "config.h"
 
 class NanoleafApiWrapper {
-    public:
-        NanoleafApiWrapper();
-        bool setPower(const bool& state);
+public:
+    NanoleafApiWrapper();
 
-    private:
-        bool getData(const String& endpoint, JsonDocument& jsonResponse);
-        bool postData(const String& endpoint, const JsonDocument& jsonPayload);
-        bool putData(const String& endpoint, const JsonDocument& jsonPayload);
-        String nanoleafBaseUrl;
-        String nanoleafAuthToken;
-        WiFiClient client;
+    bool setPower(const bool &state);
+
+private:
+    bool getData(const String &endpoint, JsonDocument &jsonResponse);
+
+    bool postData(const String &endpoint, const JsonDocument &jsonPayload);
+
+    bool putData(const String &endpoint, const JsonDocument &jsonPayload);
+
+    String nanoleafBaseUrl;
+    String nanoleafAuthToken;
+    WiFiClient client;
 };
 
 #endif
