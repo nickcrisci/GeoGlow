@@ -1,11 +1,13 @@
 #include <ESP8266WiFi.h>
 #include "MQTTClient.h"
+#include "NanoleafApiWrapper.h"
 #include "config.h"
 
 #include "TestAdapter.h"
 
 WiFiClient wifiClient;
 MQTTClient mqttClient(MQTT_BROKER, MQTT_PORT, wifiClient);
+NanoleafApiWrapper nanoleaf(NANOLEAF_BASE_URL, wifiClient);
 
 TestAdapter testAdapter;
 

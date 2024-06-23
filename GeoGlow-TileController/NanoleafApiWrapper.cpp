@@ -1,12 +1,6 @@
 #include "NanoleafApiWrapper.h"
 
-NanoleafApiWrapper::NanoleafApiWrapper(const String& serverName) {
-  if (serverName == "") {
-    this->serverName = defaultServerName;
-  } else {
-    this->serverName = serverName;
-  }
-}
+NanoleafApiWrapper::NanoleafApiWrapper(const String& nanoleafBaseUrl, WiFiClient& wifiClient) : nanoleafBaseUrl(nanoleafBaseUrl), client(wifiClient) {}
 
 bool NanoleafApiWrapper::postToTest(const JsonDocument& jsonPayload) {
   return postData("/test", jsonPayload);
@@ -19,10 +13,9 @@ bool NanoleafApiWrapper::postToTest2(const JsonDocument& jsonPayload) {
 bool NanoleafApiWrapper::postData(const String& endpoint, const JsonDocument& jsonPayload) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    WiFiClient wifiClient;
-    String url = serverName + endpoint;
+    String url = nanoleafBaseUrl + endpoint;
 
-    http.begin(wifiClient, url);
+    http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
 
     String stringPayload;
