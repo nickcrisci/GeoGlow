@@ -40,8 +40,8 @@ def __on_message(client, userdata, msg):
         msg (mqtt.MQTTMessage): The received MQTT message object. It contains information about the topic, payload, QoS level, and retain flag.
     """
     topic = msg.topic
-    if topic == f"{SERVICE_TOPIC}/register" or topic == f"{SERVICE_TOPIC}/ping":
-        __on_register_or_ping(msg)
+    if topic == f"{SERVICE_TOPIC}/ping":
+        __on_ping(msg)
     elif topic == f"{SERVICE_TOPIC}/api":
         __on_api(client, msg)
 
@@ -65,7 +65,7 @@ def __on_connect(client, userdata, flags, reason_code, properties):
         print(f"Failed to connect: {reason_code}. loop_forever() will retry connection")
     else:
         sub_topics = __get_sub_topics("mqtt_sub_topics.txt")
-        print(sub_topics)
+        print("Trying to connect to topics: ", sub_topics)
         client.subscribe(sub_topics)
 
 def __on_subscribe(client, userdata, mid, reason_code_list, properties):
@@ -100,7 +100,7 @@ __on_register_or_ping => Executed when a message arrives on the /register or /pi
 
 """
 
-def __on_register_or_ping(msg):
+def __on_ping(msg):
     """
     Processes a registration message received on the "GeoGlow/Friend-Service/register" topic.
 
@@ -113,14 +113,9 @@ def __on_register_or_ping(msg):
         payload_json (str): The JSON-encoded payload of the registration message.
         It is expected to contain a key "controller_id" with the unique identifier of the controller.
     """
-    topic = msg.topic
     payload = json.loads(msg.payload.decode())
-    controller_id = payload["controller_id"]
 
-    if "register" in topic: 
-        register_friend(controller_id)
-    else:
-        received_controller_ping(controller_id)
+    received_controller_ping(payload)
 
 def __on_api(client, msg):
     payload = json.loads(msg.payload.decode())

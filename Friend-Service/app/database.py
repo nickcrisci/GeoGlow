@@ -5,7 +5,7 @@ client = pymongo.MongoClient("mongodb://mongo:27017/")
 db = client["friend_database"]
 collection = db["friend_collection"]
 
-def register_friend(controller_id):
+def register_friend(friendId, deviceId):
     """
     Registers a new friend by inserting a document into the collection.
 
@@ -15,22 +15,25 @@ def register_friend(controller_id):
     Returns:
         Any: The insertion result object from pymongo.
     """
-    existing_document = collection.find_one(filter={"controller_id": controller_id})
-    if not existing_document:
-        result = collection.insert_one({"controller_id": controller_id, "timestamp": time.time()})
-        print(f"Document inserted successfully! ID: {result.inserted_id}")
-    else:
-        print(f"Document with controller_id: {controller_id} already exists!")
+    data = {
+        "friendId": friendId,
+        "deviceId": deviceId,
+        "_timestamp": time.time() 
+    }
+    result = collection.insert_one(data)
+    print(f"Document inserted successfully! ID: {result.inserted_id}")
 
-def received_controller_ping(controller_id):
+def received_controller_ping(payload):
     timestamp = time.time()
     update = {"$set": {"timestamp": timestamp}}
-    update_result = collection.update_one({"controller_id": controller_id}, update)    
-    # If for some reason ping is received before register
+    friendId, deviceId = payload["deviceId"], payload["friendId"]
+    update_result = collection.update_one({"deviceId": deviceId}, update, upsert = True)  
+    
+    # First ping is a register
     if update_result.modified_count == 1:
-        print(f"Updated timestamp of controller with ID '{controller_id}' successfully")
+        print(f"Updated timestamp of controller with ID '{deviceId}' successfully")
     else:
-        register_friend(controller_id)
+        register_friend(friendId, deviceId)
 
 # TODO: Read the device ids from database
 #   and return object
