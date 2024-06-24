@@ -1,43 +1,32 @@
 #include "MQTTClient.h"
 
-std::vector<TopicAdapter*> MQTTClient::topicAdapters;
+std::vector<TopicAdapter *> MQTTClient::topicAdapters;
 
-MQTTClient::MQTTClient()
-{
-    WiFiClient wifiClient;
-    client = PubSubClient(wifiClient);
+MQTTClient::MQTTClient(WiFiClient &wifiClient)
+    : client(wifiClient) {
 }
 
-void MQTTClient::setup(const char* mqttBroker, const int mqttPort)
-{
-    client.setServer(mqttBroker,mqttPort);
+void MQTTClient::setup(const char *mqttBroker, const int mqttPort) {
+    client.setServer(mqttBroker, mqttPort);
     client.setCallback(callback);
 }
 
-void MQTTClient::loop()
-{
-    if (client.state() != 0)
-    {
+void MQTTClient::loop() {
+    if (!client.connected()) {
         reconnect();
     }
     client.loop();
 }
 
-void MQTTClient::reconnect()
-{
-    while (client.state() != 0)
-    {
+void MQTTClient::reconnect() {
+    while (!client.connected()) {
         Serial.print("Attempting MQTT connection...");
-        if (client.connect("qwer"))
-        {
+        if (client.connect("GeoGlow")) {
             Serial.println("connected");
-            for (const auto adapter : topicAdapters)
-            {
+            for (const auto adapter: topicAdapters) {
                 client.subscribe(adapter->getTopic());
             }
-        }
-        else
-        {
+        } else {
             Serial.print("failed, rc=");
             Serial.print(client.state());
             Serial.println(" try again in 5 seconds");
@@ -46,39 +35,31 @@ void MQTTClient::reconnect()
     }
 }
 
-void MQTTClient::publish(const char* topic, const JsonDocument& jsonPayload)
-{
-    if (client.connected())
-    {
+void MQTTClient::publish(const char *topic, const JsonDocument &jsonPayload) {
+    if (client.connected()) {
         char buffer[512];
         const size_t n = serializeJson(jsonPayload, buffer);
         client.publish(topic, buffer, n);
-    }
-    else
-    {
+    } else {
         Serial.println("MQTT client not connected. Unable to publish message.");
     }
 }
 
-void MQTTClient::addTopicAdapter(TopicAdapter* adapter)
-{
+void MQTTClient::addTopicAdapter(TopicAdapter *adapter) {
     topicAdapters.push_back(adapter);
-    if (client.state() == 0)
-    {
+    if (client.connected()) {
         client.subscribe(adapter->getTopic());
     }
 }
 
-void MQTTClient::callback(char* topic, const byte* payload, const unsigned int length)
-{
+void MQTTClient::callback(char *topic, const byte *payload, const unsigned int length) {
     char payloadBuffer[length + 1];
     memcpy(payloadBuffer, payload, length);
     payloadBuffer[length] = '\0';
 
     JsonDocument jsonDocument;
 
-    if (deserializeJson(jsonDocument, payloadBuffer))
-    {
+    if (deserializeJson(jsonDocument, payloadBuffer)) {
         Serial.print("Unhandled message [");
         Serial.print(topic);
         Serial.print("] ");
@@ -86,10 +67,8 @@ void MQTTClient::callback(char* topic, const byte* payload, const unsigned int l
         return;
     }
 
-    for (const auto adapter : topicAdapters)
-    {
-        if (matches(adapter->getTopic(), topic))
-        {
+    for (const auto adapter: topicAdapters) {
+        if (matches(adapter->getTopic(), topic)) {
             adapter->callback(topic, jsonDocument.as<JsonObject>(), length);
             return;
         }
@@ -101,15 +80,11 @@ void MQTTClient::callback(char* topic, const byte* payload, const unsigned int l
     Serial.println(payloadBuffer);
 }
 
-bool MQTTClient::matches(const char* subscribedTopic, const char* receivedTopic)
-{
-    if (const char* wildCardPos = strchr(subscribedTopic, '#'); wildCardPos != nullptr)
-    {
-        if (wildCardPos[1] == '\0')
-        {
+bool MQTTClient::matches(const char *subscribedTopic, const char *receivedTopic) {
+    if (const char *wildCardPos = strchr(subscribedTopic, '#'); wildCardPos != nullptr) {
+        if (wildCardPos[1] == '\0') {
             size_t subscribedTopicLength = wildCardPos - subscribedTopic;
-            if (subscribedTopicLength > 0 && subscribedTopic[subscribedTopicLength - 1] == '/')
-            {
+            if (subscribedTopicLength > 0 && subscribedTopic[subscribedTopicLength - 1] == '/') {
                 subscribedTopicLength--;
             }
             return strncmp(subscribedTopic, receivedTopic, subscribedTopicLength) == 0;
@@ -117,15 +92,13 @@ bool MQTTClient::matches(const char* subscribedTopic, const char* receivedTopic)
         return false;
     }
 
-    if (const char* plusPos = strchr(subscribedTopic, '+'); plusPos != nullptr)
-    {
-        const char* slashPos = strchr(receivedTopic, '/');
-        if (slashPos == nullptr)
-        {
+    if (const char *plusPos = strchr(subscribedTopic, '+'); plusPos != nullptr) {
+        const char *slashPos = strchr(receivedTopic, '/');
+        if (slashPos == nullptr) {
             return true;
         }
         return strncmp(subscribedTopic, receivedTopic, plusPos - subscribedTopic) == 0 &&
-            strcmp(plusPos + 1, slashPos + 1) == 0;
+               strcmp(plusPos + 1, slashPos + 1) == 0;
     }
 
     return strcmp(subscribedTopic, receivedTopic) == 0;
