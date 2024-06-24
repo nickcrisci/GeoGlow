@@ -5,6 +5,7 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <ArduinoJson.h>
+#include <UUID.h>
 #include "MQTTClient.h"
 #include "NanoleafApiWrapper.h"
 
@@ -23,6 +24,7 @@ char mqttBroker[40];
 char mqttPort[6] = "1883";
 char nanoleafBaseUrl[55] = "";
 char friendId[36] = "";
+char deviceId[36] = "";
 
 bool shouldSaveConfig = false;
 
@@ -34,7 +36,10 @@ void saveConfigCallback() {
 void setup() {
     Serial.begin(115200);
     delay(10);
-    Serial.println();
+
+    UUID uuid;
+    strcpy(deviceId, uuid.toCharArray());
+
 
     if (SPIFFS.begin()) {
         Serial.println("mounted file system");
@@ -50,6 +55,7 @@ void setup() {
                 JsonDocument jsonConfig;
                 deserializeJson(jsonConfig, buf.get());
                 Serial.println("parsed json");
+                strcpy(deviceId, jsonConfig["deviceId"]);
                 strcpy(mqttBroker, jsonConfig["mqttBroker"]);
                 strcpy(mqttPort, jsonConfig["mqttPort"]);
                 strcpy(nanoleafBaseUrl, jsonConfig["nanoleafBaseUrl"]);
@@ -65,8 +71,12 @@ void setup() {
 
     WiFiManagerParameter customMqttBroker("mqttBroker", "mqtt broker", mqttBroker, 40);
     WiFiManagerParameter customMqttPort("mqttPort", "mqtt port", mqttPort, 6);
-    WiFiManagerParameter customNanoleafBaseUrl("nanoleafBaseUrl", "http://<Nanoleaf-Base-Url[:<Port>]>",
-                                               nanoleafBaseUrl, 55);
+    WiFiManagerParameter customNanoleafBaseUrl(
+        "nanoleafBaseUrl",
+        "http://<Nanoleaf-Base-Url[:<Port>]>",
+        nanoleafBaseUrl,
+        55
+    );
     WiFiManagerParameter customFriendId("friendId", "<Friend-ID>", friendId, 36);
 
     wifiManager.setSaveConfigCallback(saveConfigCallback);
@@ -87,11 +97,16 @@ void setup() {
     strcpy(mqttPort, customMqttPort.getValue());
     strcpy(nanoleafBaseUrl, customNanoleafBaseUrl.getValue());
     strcpy(friendId, customFriendId.getValue());
+
+    friendId[sizeof(friendId) - 1] = '\0';
+    deviceId[sizeof(deviceId) - 1] = '\0';
+
     Serial.println("The values in the file are: ");
     Serial.println("\tmqttBroker : " + String(mqttBroker));
     Serial.println("\tmqttPort : " + String(mqttPort));
     Serial.println("\tnanoleafBaseUrl : " + String(nanoleafBaseUrl));
     Serial.println("\tfriendId : " + String(friendId));
+    Serial.println("\tdeviceId : " + String(deviceId));
 
     if (shouldSaveConfig) {
         Serial.println("saving config");
@@ -100,12 +115,12 @@ void setup() {
         jsonConfig["mqttPort"] = mqttPort;
         jsonConfig["nanoleafBaseUrl"] = nanoleafBaseUrl;
         jsonConfig["friendId"] = friendId;
+        jsonConfig["deviceId"] = deviceId;
 
         File configFile = SPIFFS.open("/config.json", "w");
         if (!configFile) {
             Serial.println("failed to open config file for writing");
         }
-
         serializeJson(jsonConfig, Serial);
         serializeJson(jsonConfig, configFile);
         configFile.close();
@@ -125,7 +140,7 @@ void loop() {
     if (millis() - lastPublishTime >= 30000) {
         JsonDocument jsonPayload;
         jsonPayload["friendId"] = friendId;
-        jsonPayload["deviceId"] = "1be3cb4d-0d8d-4328-8d9d-a37a887f3a4c";
+        jsonPayload["deviceId"] = deviceId;
         mqttClient.publish("GeoGlow/ping", jsonPayload);
 
         lastPublishTime = millis();
