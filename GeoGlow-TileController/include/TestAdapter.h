@@ -3,16 +3,20 @@
 
 #include "TopicAdapter.h"
 
-class TestAdapter final : public TopicAdapter {
+class TestAdapter final : public TopicAdapter
+{
 public:
-    TestAdapter(): topic("test/#") {
+    TestAdapter(): topic("test/#")
+    {
     }
 
-    const char *getTopic() const override {
+    [[nodiscard]] const char* getTopic() const override
+    {
         return topic;
     }
 
-    void callback(char *topic, const JsonObject &payload, unsigned int length) override {
+    void callback(char* topic, const JsonObject& payload, unsigned int length) override
+    {
         const int value = payload["value"];
         Serial.print("Received value from topic '");
         Serial.print(topic);
@@ -21,7 +25,7 @@ public:
     }
 
 private:
-    const char *topic;
+    const char* topic;
 };
 
 #endif

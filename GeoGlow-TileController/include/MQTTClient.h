@@ -7,27 +7,28 @@
 #include <ArduinoJson.h>
 #include "TopicAdapter.h"
 
-class MQTTClient {
+class MQTTClient
+{
 public:
-    MQTTClient(const char *mqttBroker, int mqttPort, WiFiClient &wifiClient);
+    MQTTClient();
+
+    void setup(const char* mqttBroker, int mqttPort);
 
     void loop();
 
-    void publish(const char *topic, const JsonDocument &jsonPayload);
+    void publish(const char* topic, const JsonDocument& jsonPayload);
 
-    void addTopicAdapter(TopicAdapter *adapter);
+    void addTopicAdapter(TopicAdapter* adapter);
 
 private:
     void reconnect();
 
-    static void callback(char *topic, const byte *payload, unsigned int length);
+    static void callback(char* topic, const byte* payload, unsigned int length);
 
-    static bool matches(const char *subscribedTopic, const char *receivedTopic);
+    static bool matches(const char* subscribedTopic, const char* receivedTopic);
 
-    const char *mqttBroker;
-    const int mqttPort;
     PubSubClient client;
-    static std::vector<TopicAdapter *> topicAdapters;
+    static std::vector<TopicAdapter*> topicAdapters;
 };
 
 #endif
