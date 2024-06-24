@@ -4,11 +4,12 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
-#include "config.h"
 
 class NanoleafApiWrapper {
 public:
-    NanoleafApiWrapper();
+    explicit NanoleafApiWrapper(const WiFiClient &wifiClient);
+
+    void setup(const char *nanoleafBaseUrl, const char *nanoleafAuthToken);
 
     bool setPower(const bool &state);
 

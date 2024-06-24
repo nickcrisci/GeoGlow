@@ -1,12 +1,14 @@
 #include "NanoleafApiWrapper.h"
 
-NanoleafApiWrapper::NanoleafApiWrapper() {
-    nanoleafBaseUrl = NANOLEAF_BASE_URL;
-    nanoleafAuthToken = NANOLEAF_AUTH_TOKEN;
-
-    const WiFiClient wifiClient;
-    client = wifiClient;
+NanoleafApiWrapper::NanoleafApiWrapper(const WiFiClient &wifiClient)
+    : client(wifiClient) {
 }
+
+void NanoleafApiWrapper::setup(const char *nanoleafBaseUrl, const char *nanoleafAuthToken) {
+    this->nanoleafBaseUrl = nanoleafBaseUrl;
+    this->nanoleafAuthToken = nanoleafAuthToken;
+}
+
 
 bool NanoleafApiWrapper::getData(const String &endpoint, JsonDocument &jsonResponse) {
     if (WiFi.status() == WL_CONNECTED) {

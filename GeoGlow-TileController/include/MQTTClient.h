@@ -9,7 +9,9 @@
 
 class MQTTClient {
 public:
-    MQTTClient(const char *mqttBroker, int mqttPort, WiFiClient &wifiClient);
+    explicit MQTTClient(WiFiClient &wifiClient);
+
+    void setup(const char *mqttBroker, int mqttPort);
 
     void loop();
 
@@ -24,8 +26,6 @@ private:
 
     static bool matches(const char *subscribedTopic, const char *receivedTopic);
 
-    const char *mqttBroker;
-    const int mqttPort;
     PubSubClient client;
     static std::vector<TopicAdapter *> topicAdapters;
 };
