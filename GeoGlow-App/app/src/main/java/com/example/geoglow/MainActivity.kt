@@ -21,7 +21,6 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         mqttClient = MqttClient(this)
         mqttClient.connect()
 
@@ -29,14 +28,6 @@ class MainActivity : ComponentActivity() {
             GeoGlowTheme {
                 Navigation(viewModel, mqttClient)
             }
-        }
-
-        var uniqueID = SharedPreferencesHelper.getUniqueID(this)
-        if (uniqueID == null) {
-            // Generate a new unique ID, save it, publish it
-            uniqueID = IDGenerator.generateUniqueID()
-            SharedPreferencesHelper.setUniqueID(this, uniqueID)
-            mqttClient.publish(uniqueID, false)
         }
     }
 

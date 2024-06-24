@@ -3,6 +3,8 @@ package com.example.geoglow
 import android.annotation.SuppressLint
 import android.content.Context
 import androidx.palette.graphics.Palette
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -38,31 +40,18 @@ fun transformListToJson(name: String, list: List<Array<Int>>): JSONObject {
     return jsonObject
 }
 
-fun jsonStringToList(jsonString: String): List<Friend> {
-    val friendList = mutableListOf<Friend>()
-    val jsonArray = JSONArray(jsonString)
+fun jsonStringToFriendList(jsonString: String): List<Friend> {
+    val gson = Gson()
+    val friendType = object : TypeToken<List<Friend>>() {}.type
+    val friends: List<Friend> = gson.fromJson(jsonString, friendType)
 
-    for (i in 0 until jsonArray.length()) {
-        val jsonObject = jsonArray.getJSONObject(i)
-        val name = jsonObject.getString("name")
-        val id = jsonObject.getString("id")
-        friendList.add(Friend(name, id))
+    return friends.map { friend ->
+        Friend(
+            name = friend.name,
+            id = null,
+            devices = friend.devices.toMutableList()
+        )
     }
-
-    return friendList
-}
-
-fun listToJsonString(friendList: List<Friend>): String {
-    val jsonArray = JSONArray()
-
-    for (friend in friendList) {
-        val jsonObject = JSONObject()
-        jsonObject.put("name", friend.name)
-        jsonObject.put("id", friend.id)
-        jsonArray.put(jsonObject)
-    }
-
-    return jsonArray.toString()
 }
 
 fun paletteToRgbList(palette: Palette): List<Array<Int>> {

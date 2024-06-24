@@ -36,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,6 +56,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,6 +65,7 @@ import androidx.palette.graphics.Palette
 import com.example.geoglow.ColorViewModel
 import com.example.geoglow.CustomGalleryContract
 import com.example.geoglow.Friend
+import com.example.geoglow.IDGenerator
 import com.example.geoglow.MqttClient
 import com.example.geoglow.PermissionHandler
 import com.example.geoglow.R
@@ -73,9 +76,10 @@ import java.util.Objects
 
 
 @Composable
-fun MainScreen(navController: NavController, viewModel: ColorViewModel) {
+fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClient: MqttClient) {
     //val viewModel: ColorViewModel = viewModel()
     val context = LocalContext.current
+    val user: Friend? = SharedPreferencesHelper.getUser(context)
     val permissionHandler = PermissionHandler(context)
     val file = context.createImageFile()
     val imageUri = FileProvider.getUriForFile(
@@ -84,12 +88,14 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel) {
         file
     )
 
-    val galleryLauncher = rememberLauncherForActivityResult(contract = CustomGalleryContract()) { uri ->
+    val galleryLauncher =
+        rememberLauncherForActivityResult(contract = CustomGalleryContract()) { uri ->
         uri?.let(viewModel::setColorState)
         navController.navigate(Screen.ImageScreen.route)
     }
     
-    val cameraLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture()) { success ->
+    val cameraLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture()) { success ->
         if (success) {
             imageUri.let(viewModel::setColorState)
             navController.navigate(Screen.ImageScreen.route)
@@ -98,11 +104,17 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel) {
         }
     }
 
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { success ->
+    val cameraPermissionLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { success ->
         permissionHandler.onPermissionResult(Manifest.permission.CAMERA, success)
         if (success) cameraLauncher.launch(imageUri)
     }
 
+    if (user == null) {
+        WelcomePopup (
+            mqttClient
+        )
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -121,6 +133,7 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel) {
                 fontWeight = FontWeight.Bold
             )
 
+            //TODO: Button with info on userId, name and devices
             Column {
                 ExtendedFloatingActionButton(
                     onClick = {
@@ -180,7 +193,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
     val imageBitmap: ImageBitmap? = colorState.imageBitmap
     val palette: Palette? = colorState.palette
     val colorPalette = palette?.let { paletteToRgbList(it) } ?: emptyList()
-    val uniqueID: String = SharedPreferencesHelper.getUniqueID(context) ?: "empty"
+    val user: Friend? = SharedPreferencesHelper.getUser(context)
     val friendList = SharedPreferencesHelper.getFriendList(context)
     var showPopup by remember { mutableStateOf(false) }
 
@@ -403,9 +416,9 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
 
         FloatingActionButton(
             onClick = {
-                //TODO: do it differently
-                mqttClient.subscribe(uniqueID)
-                mqttClient.publish(uniqueID, true)
+                //TODO: do it somewhere else
+                mqttClient.subscribe(user?.id ?: "-1")
+                mqttClient.publish(user?.id ?: "-1", null)
                 showPopup = true
             },
             modifier = Modifier
@@ -421,6 +434,50 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
 }
 
 @Composable
+fun WelcomePopup(mqttClient: MqttClient) {
+    var name by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    Dialog(onDismissRequest = {}) {
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Welcome!", style = MaterialTheme.typography.headlineSmall)
+                Text("Please enter your name:")
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(onClick = {
+                        if (name.isNotBlank()) {
+                            val user = Friend (
+                                name = name,
+                                id = IDGenerator.generateUniqueID(),
+                                devices = mutableListOf()
+                            )
+                            SharedPreferencesHelper.setUser(context, user)
+                            mqttClient.publish(user.id ?: "-1", user.name)
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun FriendSelectionPopup(
     navController: NavController,
     friends: List<Friend>,
@@ -429,7 +486,6 @@ fun FriendSelectionPopup(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val uniqueID: String = SharedPreferencesHelper.getUniqueID(context) ?: "empty"
     val selectedFriends = remember { mutableStateListOf<Friend>() }
 
     AlertDialog(
@@ -463,7 +519,7 @@ fun FriendSelectionPopup(
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = friend.name)
+                        Text(text = friend.name) //TODO: show name + deviceList
                     }
                 }
             }
@@ -471,7 +527,7 @@ fun FriendSelectionPopup(
         confirmButton = {
             Button(onClick = {
                 selectedFriends.forEach {
-                    mqttClient.publish(uniqueID, it.id, colorPalette)
+                    mqttClient.publish(it.id ?: "-1", it.devices.first(), colorPalette)
                 }
                 navController.navigate(Screen.MainScreen.route)
                 Toast.makeText(context, "Color palette was sent", Toast.LENGTH_LONG).show()

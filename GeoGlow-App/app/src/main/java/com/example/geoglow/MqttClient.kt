@@ -14,7 +14,7 @@ class MqttClient(private val context: Context) {
         private const val TAG = "MQTTClient"
         private const val HOST = "hivemq.dock.moxd.io"
         private const val PORT = 1883
-        private const val SERVICE = "GeoGlowService"
+        private const val SERVICE = "Friend-Service"
     }
 
     private var mqttClient: Mqtt3AsyncClient = MqttClient.builder()
@@ -53,14 +53,14 @@ class MqttClient(private val context: Context) {
             }
     }
 
-    fun subscribe(uniqueId: String) {
-        val subTopic = "GeoGlow/$SERVICE/Api/$uniqueId"
+    fun subscribe(userId: String) {
+        val subTopic = "GeoGlow/$SERVICE/Api/$userId"
 
         mqttClient.subscribeWith()
             .topicFilter(subTopic)
             .callback { publish ->
                 val payload = StandardCharsets.UTF_8.decode(publish.payload.get()).toString()
-                val friendList = jsonStringToList(payload)
+                val friendList = jsonStringToFriendList(payload)
                 SharedPreferencesHelper.setFriendList(context, friendList)
                 Log.i(TAG,"Mqtt subscription payload: $friendList")
             }
@@ -87,21 +87,22 @@ class MqttClient(private val context: Context) {
             }
     }
 
-    fun publish(uniqueId: String, demand: Boolean) {
-        val pubTopic: String
+    fun publish(uniqueId: String, name: String?) {
+        val pubTopic = "GeoGlow/$SERVICE/Api"
         val jsonPayload = JSONObject()
 
-        if (demand) {
-            pubTopic = "GeoGlow/$SERVICE/Api/$uniqueId"
-            jsonPayload.put("command", "RequestFriendIDs")
-        } else {
-            pubTopic = "GeoGlow/$SERVICE/Api"
-            jsonPayload.put("command", "PostFriendID")
+        if (name == null) {
+            jsonPayload.put("command", "requestFriendIDs")
             jsonPayload.put("friendId", uniqueId)
+        } else {
+            jsonPayload.put("command", "postFriendID")
+            jsonPayload.put("friendId", uniqueId)
+            jsonPayload.put("name", name)
         }
 
         mqttClient.publishWith()
             .topic(pubTopic)
+            .retain(true)
             .payload(jsonPayload.toString().toByteArray())
             .send()
             .whenComplete { publish, throwable ->
@@ -114,12 +115,13 @@ class MqttClient(private val context: Context) {
             }
     }
 
-    fun publish(uniqueId: String, friendId: String, payload: List<Array<Int>>) {
-        val pubTopic = "GeoGlow/$friendId/$uniqueId" //TODO: uniqueId wieder rausnehmen
+    fun publish(friendId: String, deviceId: String, payload: List<Array<Int>>) {
+        val pubTopic = "GeoGlow/$friendId/$deviceId"
         val jsonPayload = transformListToJson("color palette", payload)
 
         mqttClient.publishWith()
             .topic(pubTopic)
+            .retain(true)
             .payload(jsonPayload.toString().toByteArray())
             .send()
             .whenComplete { publish, throwable ->

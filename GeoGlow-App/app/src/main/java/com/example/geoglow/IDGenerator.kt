@@ -4,6 +4,7 @@ import java.util.UUID
 
 object IDGenerator {
     fun generateUniqueID(): String {
-        return UUID.randomUUID().toString()
+        val uuid= UUID.randomUUID().toString()
+        return uuid.substring(0, 8)
     }
 }
