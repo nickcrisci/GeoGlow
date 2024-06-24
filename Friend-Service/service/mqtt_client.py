@@ -1,7 +1,7 @@
 import os
 import json
 import paho.mqtt.client as mqtt
-from database import register_friend, received_controller_ping, get_device_ids
+from database import register_friend, received_controller_ping, get_friends_devices
 
 SERVICE_TOPIC = "GeoGlow/Friend-Service"
 
@@ -122,7 +122,8 @@ def __on_api(client, msg):
     friendId = payload["friendId"]
     if payload["command"] == "requestFriendIDs":
         # TODO: execute database function to get device ids of friends
-        deviceIds = get_device_ids()
+        deviceIds = get_device_ids(friendId)
+        client.publish(f"{SERVICE_TOPIC}/api/{friendId}", json.dumps(deviceIds))
         message = [
             {
                 "name": "Katy",
