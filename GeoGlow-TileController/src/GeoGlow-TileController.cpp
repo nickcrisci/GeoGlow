@@ -40,6 +40,7 @@ void setup() {
     UUID uuid;
     strcpy(deviceId, uuid.toCharArray());
 
+
     if (SPIFFS.begin()) {
         Serial.println("mounted file system");
         if (SPIFFS.exists("/config.json")) {
@@ -120,7 +121,6 @@ void setup() {
         if (!configFile) {
             Serial.println("failed to open config file for writing");
         }
-
         serializeJson(jsonConfig, Serial);
         serializeJson(jsonConfig, configFile);
         configFile.close();
