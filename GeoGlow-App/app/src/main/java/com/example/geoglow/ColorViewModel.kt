@@ -48,6 +48,7 @@ class ColorViewModel(application: Application): AndroidViewModel(application) {
         }
     }
 
+    //TODO: rotate image properly
     private fun rotateImage(bitmap: Bitmap, uri: Uri): Bitmap {
         try {
             val exifInterface = ExifInterface(uri.path ?: "")

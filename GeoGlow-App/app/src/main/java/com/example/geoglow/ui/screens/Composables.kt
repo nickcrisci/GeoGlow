@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -54,6 +56,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -80,6 +83,7 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
     //val viewModel: ColorViewModel = viewModel()
     val context = LocalContext.current
     val user: Friend? = SharedPreferencesHelper.getUser(context)
+    var expandInfo: Boolean by remember { mutableStateOf(false) }
     val permissionHandler = PermissionHandler(context)
     val file = context.createImageFile()
     val imageUri = FileProvider.getUriForFile(
@@ -127,13 +131,39 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
             verticalArrangement = Arrangement.SpaceEvenly,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = "GeoGlow",
-                fontSize = MaterialTheme.typography.headlineLarge.fontSize,
-                fontWeight = FontWeight.Bold
+            Icon(
+                painter = painterResource(id = R.drawable.baseline_info_outline_24),
+                contentDescription = "icon",
+                modifier = Modifier
+                    .size(25.dp)
+                    .clickable { expandInfo = !expandInfo },
+                tint = MaterialTheme.colorScheme.secondary
             )
 
-            //TODO: Button with info on userId, name and devices
+            if (expandInfo) {
+                Box (
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                ) {
+                    Card (
+                        modifier = Modifier
+                            .padding(top = 10.dp)
+                            .clickable { expandInfo = !expandInfo }
+                    ) {
+                        Column (
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            IconText(iconId = R.drawable.baseline_tag_24, text = user?.id ?: "-1")
+                            IconText(iconId = R.drawable.baseline_person_24, text = user?.name ?: "No name")
+                            IconText(iconId = R.drawable.baseline_list_alt_24, text = user?.devices?.first() ?: "empty")
+                        }
+                    }
+                }
+            }
+
             Column {
                 ExtendedFloatingActionButton(
                     onClick = {
@@ -519,7 +549,13 @@ fun FriendSelectionPopup(
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = friend.name) //TODO: show name + deviceList
+                        Column {
+                            Text(
+                                text = friend.name,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(text = friend.devices.first())
+                        }
                     }
                 }
             }
@@ -541,4 +577,26 @@ fun FriendSelectionPopup(
             }
         }
     )
+}
+
+@Composable
+fun IconText(iconId: Int, text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(id = iconId),
+            contentDescription = "icon",
+            modifier = Modifier
+                .padding(end = 10.dp)
+                .size(20.dp),
+            tint = MaterialTheme.colorScheme.onSecondary
+        )
+
+        Text(
+            text = text,
+            fontSize = MaterialTheme.typography.titleSmall.fontSize,
+            fontWeight = FontWeight.Normal
+        )
+    }
 }
