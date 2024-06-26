@@ -84,6 +84,7 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
     val context = LocalContext.current
     val user: Friend? = SharedPreferencesHelper.getUser(context)
     var expandInfo: Boolean by remember { mutableStateOf(false) }
+    var showPopup by remember { mutableStateOf(true) }
     val permissionHandler = PermissionHandler(context)
     val file = context.createImageFile()
     val imageUri = FileProvider.getUriForFile(
@@ -114,9 +115,10 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
         if (success) cameraLauncher.launch(imageUri)
     }
 
-    if (user == null) {
+    if (user == null && showPopup) {
         WelcomePopup (
-            mqttClient
+            mqttClient,
+            onSave = { showPopup = false }
         )
     }
 
@@ -158,7 +160,9 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
                         ) {
                             IconText(iconId = R.drawable.baseline_tag_24, text = user?.id ?: "-1")
                             IconText(iconId = R.drawable.baseline_person_24, text = user?.name ?: "No name")
-                            IconText(iconId = R.drawable.baseline_list_alt_24, text = user?.devices?.first() ?: "empty")
+                            if (user?.devices?.isNotEmpty() == true) {
+                                IconText(iconId = R.drawable.baseline_list_alt_24, text = user.devices.first())
+                            }
                         }
                     }
                 }
@@ -224,7 +228,6 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
     val palette: Palette? = colorState.palette
     val colorPalette = palette?.let { paletteToRgbList(it) } ?: emptyList()
     val user: Friend? = SharedPreferencesHelper.getUser(context)
-    val friendList = SharedPreferencesHelper.getFriendList(context)
     var showPopup by remember { mutableStateOf(false) }
 
 
@@ -247,7 +250,6 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
     if (showPopup) {
         FriendSelectionPopup(
             navController,
-            friendList,
             colorPalette,
             mqttClient,
             onDismiss = { showPopup = false }
@@ -464,7 +466,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
 }
 
 @Composable
-fun WelcomePopup(mqttClient: MqttClient) {
+fun WelcomePopup(mqttClient: MqttClient, onSave: () -> Unit) {
     var name by remember { mutableStateOf("") }
     val context = LocalContext.current
 
@@ -497,6 +499,7 @@ fun WelcomePopup(mqttClient: MqttClient) {
                             )
                             SharedPreferencesHelper.setUser(context, user)
                             mqttClient.publish(user.id ?: "-1", user.name)
+                            onSave()
                         }
                     }) {
                         Text("Save")
@@ -510,17 +513,22 @@ fun WelcomePopup(mqttClient: MqttClient) {
 @Composable
 fun FriendSelectionPopup(
     navController: NavController,
-    friends: List<Friend>,
     colorPalette: List<Array<Int>>,
     mqttClient: MqttClient,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val selectedFriends = remember { mutableStateListOf<Friend>() }
+    val friendList = SharedPreferencesHelper.getFriendList(context)
+    val friends = friendList.ifEmpty { listOf(
+        Friend("Anna", "47fh39cv", mutableListOf("366452")),
+        Friend("Hans", "kj876fnt", mutableListOf("767854")),
+        Friend("Peter", "0j6gd8nb", mutableListOf("364765"))
+    ) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Friends") },
+        title = { Text(text = "Select Friends", style = MaterialTheme.typography.headlineSmall) },
         text = {
             LazyColumn {
                 items(friends.size) { index ->

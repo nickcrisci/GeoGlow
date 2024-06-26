@@ -92,10 +92,10 @@ class MqttClient(private val context: Context) {
         val jsonPayload = JSONObject()
 
         if (name == null) {
-            jsonPayload.put("command", "requestFriendIDs")
+            jsonPayload.put("command", "requestDeviceIds")
             jsonPayload.put("friendId", uniqueId)
         } else {
-            jsonPayload.put("command", "postFriendID")
+            jsonPayload.put("command", "postFriendId")
             jsonPayload.put("friendId", uniqueId)
             jsonPayload.put("name", name)
         }
@@ -116,8 +116,8 @@ class MqttClient(private val context: Context) {
     }
 
     fun publish(friendId: String, deviceId: String, payload: List<Array<Int>>) {
-        val pubTopic = "GeoGlow/$friendId/$deviceId"
-        val jsonPayload = transformListToJson("color palette", payload)
+        val pubTopic = "GeoGlow/$SERVICE/Color/$friendId/$deviceId"
+        val jsonPayload = transformListToJson("color_palette", payload)
 
         mqttClient.publishWith()
             .topic(pubTopic)
