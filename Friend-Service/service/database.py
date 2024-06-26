@@ -116,7 +116,21 @@ def _get_friends_devices(friendId: str) -> list:
         return []
     return friendDevices
 
-def _get_friend_data(friendId: str) -> dict:
+def find_friend(friendId: str):
+    cursor = friend_col.find({"friendId": friendId})
+    try:
+        return cursor.next()
+    except StopIteration:
+        return None
+    
+def find_device(friendId: str, deviceId: str):
+    cursor = device_col.find({"friendId": friendId, "deviceId": deviceId})
+    try:
+        return cursor.next()
+    except StopIteration:
+        return None
+
+def get_friend_data(friendId: str) -> dict:
     """
     Retrieves the friend's data along with the associated devices.
 
@@ -143,5 +157,5 @@ def get_all_friends_data() -> list:
     friends = []
     cursor = friend_col.find({})
     for friend in cursor:
-        friends.append(_get_friend_data(friend["friendId"]))
+        friends.append(get_friend_data(friend["friendId"]))
     return friends

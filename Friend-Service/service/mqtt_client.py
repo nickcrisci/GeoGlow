@@ -1,7 +1,7 @@
 import os
 import json
 import paho.mqtt.client as mqtt
-from database import register_friend, received_controller_ping, get_all_friends_data
+from database import register_friend, received_controller_ping, get_all_friends_data, find_friend
 
 SERVICE_TOPIC = "GeoGlow/Friend-Service"
 
@@ -43,8 +43,10 @@ def __on_message(client: mqtt.Client, userdata: any, msg: mqtt.MQTTMessage) -> N
     topic = msg.topic
     if topic == f"{SERVICE_TOPIC}/ping":
         __on_ping(msg)
-    elif topic == f"{SERVICE_TOPIC}/api":
+    elif topic == f"{SERVICE_TOPIC}/Api":
         __on_api(client, msg)
+    elif "Color/" in topic:
+        __on_color(client, msg)
 
 def __on_connect(client: mqtt.Client, userdata: any, flags: dict, reason_code: mqtt.CONNACK, properties: dict) -> None:
     """
@@ -128,7 +130,27 @@ def __on_api(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     friendId = payload["friendId"]
     if payload["command"] == "requestFriendIDs":
         deviceIds = get_all_friends_data()
-        client.publish(f"{SERVICE_TOPIC}/api/{friendId}", json.dumps(deviceIds))
+        client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(deviceIds))
+
+def __process_color_payload(payload: dict) -> dict:
+    # TODO: Add further computation of payload here
+            # (e.g. encryption of payload)
+            # Afterwards return the processed payload
+    return payload
+
+def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
+    sub_topics = msg.topic.split("/")
+    deviceId = sub_topics[-1]
+    friendId = sub_topics[-2]
+
+    if find_friend(friendId) is None:
+        print(f"Friend with friendId: {friendId} not found.")
+        return
+    
+    payload = json.loads(msg.payload.decode())
+    processed_payload = __process_color_payload(payload)
+
+    client.publish(f"{SERVICE_TOPIC}/{friendId}/{deviceId}", json.dumps(processed_payload))
 
 def create_and_connect_client() -> mqtt.Client:
     """
