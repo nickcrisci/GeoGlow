@@ -4,61 +4,65 @@ NanoleafApiWrapper::NanoleafApiWrapper(const WiFiClient &wifiClient)
     : client(wifiClient) {
 }
 
+
 void NanoleafApiWrapper::setup(const char *nanoleafBaseUrl, const char *nanoleafAuthToken) {
     this->nanoleafBaseUrl = nanoleafBaseUrl;
     this->nanoleafAuthToken = nanoleafAuthToken;
 }
 
 
-bool NanoleafApiWrapper::getData(const String &endpoint, JsonDocument &jsonResponse) {
+bool NanoleafApiWrapper::sendRequest(const String &method, const String &endpoint, const JsonDocument *requestBody,
+                                     JsonDocument *responseBody, bool useAuthToken) {
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
-        const String url = nanoleafBaseUrl + "/api/v1/" + nanoleafAuthToken + endpoint;
+        String url = nanoleafBaseUrl;
 
-        http.begin(client, url);
-        http.addHeader("Content-Type", "application/json");
-
-        if (const int httpResponseCode = http.GET(); httpResponseCode > 0) {
-            String response = http.getString();
-            Serial.println(httpResponseCode);
-            Serial.println(response);
-
-            deserializeJson(jsonResponse, response);
-
-            http.end();
-            return true;
+        if (useAuthToken) {
+            url += "/api/v1/" + nanoleafAuthToken;
         } else {
-            Serial.print("Error on sending GET: ");
-            Serial.println(httpResponseCode);
-            http.end();
-            return false;
+            url += "/api/v1";
         }
-    }
-    Serial.println("WiFi Disconnected");
-    return false;
-}
 
-bool NanoleafApiWrapper::postData(const String &endpoint, const JsonDocument &jsonPayload) {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        const String url = nanoleafBaseUrl + "/api/v1/" + nanoleafAuthToken + endpoint;
+        url += endpoint;
 
         http.begin(client, url);
         http.addHeader("Content-Type", "application/json");
 
-        String stringPayload;
-        serializeJson(jsonPayload, stringPayload);
+        int httpResponseCode = -1;
 
-        const int httpResponseCode = http.POST(stringPayload);
+        if (method.equalsIgnoreCase("GET")) {
+            httpResponseCode = http.GET();
+        } else if (method.equalsIgnoreCase("POST")) {
+            if (requestBody != nullptr) {
+                String stringPayload;
+                serializeJson(*requestBody, stringPayload);
+                httpResponseCode = http.POST(stringPayload);
+            } else {
+                httpResponseCode = http.POST("");
+            }
+        } else if (method.equalsIgnoreCase("PUT")) {
+            if (requestBody != nullptr) {
+                String stringPayload;
+                serializeJson(*requestBody, stringPayload);
+                httpResponseCode = http.PUT(stringPayload);
+            } else {
+                httpResponseCode = http.PUT("");
+            }
+        }
 
         if (httpResponseCode > 0) {
-            const String response = http.getString();
-            Serial.println(httpResponseCode);
-            Serial.println(response);
+            String response = http.getString();
+
+            if (responseBody != nullptr) {
+                deserializeJson(*responseBody, response);
+            }
+
             http.end();
             return true;
         }
-        Serial.print("Error on sending POST: ");
+        Serial.print("Error on sending ");
+        Serial.print(method);
+        Serial.print(": ");
         Serial.println(httpResponseCode);
         http.end();
         return false;
@@ -67,37 +71,33 @@ bool NanoleafApiWrapper::postData(const String &endpoint, const JsonDocument &js
     return false;
 }
 
-bool NanoleafApiWrapper::putData(const String &endpoint, const JsonDocument &jsonPayload) {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        const String url = nanoleafBaseUrl + "/api/v1/" + nanoleafAuthToken + endpoint;
 
-        http.begin(client, url);
-        http.addHeader("Content-Type", "application/json");
-
-        String stringPayload;
-        serializeJson(jsonPayload, stringPayload);
-
-        if (const int httpResponseCode = http.PUT(stringPayload); httpResponseCode > 0) {
-            const String response = http.getString();
-            Serial.println(httpResponseCode);
-            Serial.println(response);
-            http.end();
+bool NanoleafApiWrapper::isConnected() {
+    JsonDocument jsonResponse;
+    if (sendRequest("GET", "/", nullptr, &jsonResponse, true)) {
+        if (jsonResponse["serialNo"] != nullptr) {
             return true;
-        } else {
-            Serial.print("Error on sending PUT: ");
-            Serial.println(httpResponseCode);
-            http.end();
-            return false;
         }
     }
-    Serial.println("WiFi Disconnected");
     return false;
 }
+
+
+String NanoleafApiWrapper::generateToken() {
+    JsonDocument jsonResponse;
+    if (sendRequest("POST", "/new", nullptr, &jsonResponse, false)) {
+        if (const String strPayload = jsonResponse["auth_token"]; strPayload != nullptr) {
+            nanoleafAuthToken = strPayload;
+            return strPayload;
+        }
+    }
+    return "";
+}
+
 
 bool NanoleafApiWrapper::setPower(const bool &state) {
     JsonDocument jsonPayload;
     jsonPayload["on"].to<JsonObject>();
     jsonPayload["on"]["value"] = state;
-    return putData("/state", jsonPayload);
+    return sendRequest("PUT", "/state", &jsonPayload, nullptr, true);
 }
