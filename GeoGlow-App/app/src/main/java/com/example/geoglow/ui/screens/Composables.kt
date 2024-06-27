@@ -24,11 +24,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardColors
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -56,13 +56,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
 import com.example.geoglow.ColorViewModel
@@ -80,7 +81,6 @@ import java.util.Objects
 
 @Composable
 fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClient: MqttClient) {
-    //val viewModel: ColorViewModel = viewModel()
     val context = LocalContext.current
     val user: Friend? = SharedPreferencesHelper.getUser(context)
     var expandInfo: Boolean by remember { mutableStateOf(false) }
@@ -126,6 +126,32 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 20.dp, end = 10.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.End
+        ) {
+            if (expandInfo) {
+                InfoCard(
+                    user = user,
+                    onClose = { expandInfo = !expandInfo }
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            IconButton(onClick = { expandInfo = !expandInfo }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_info_outline_24),
+                    contentDescription = "Info",
+                    modifier = Modifier.size(25.dp),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -133,39 +159,22 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
             verticalArrangement = Arrangement.SpaceEvenly,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                painter = painterResource(id = R.drawable.baseline_info_outline_24),
-                contentDescription = "icon",
-                modifier = Modifier
-                    .size(25.dp)
-                    .clickable { expandInfo = !expandInfo },
-                tint = MaterialTheme.colorScheme.secondary
-            )
-
-            if (expandInfo) {
-                Box (
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp)
-                ) {
-                    Card (
-                        modifier = Modifier
-                            .padding(top = 10.dp)
-                            .clickable { expandInfo = !expandInfo }
-                    ) {
-                        Column (
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            IconText(iconId = R.drawable.baseline_tag_24, text = user?.id ?: "-1")
-                            IconText(iconId = R.drawable.baseline_person_24, text = user?.name ?: "No name")
-                            if (user?.devices?.isNotEmpty() == true) {
-                                IconText(iconId = R.drawable.baseline_list_alt_24, text = user.devices.first())
-                            }
-                        }
-                    }
-                }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "GeoGlow",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Column {
@@ -219,7 +228,6 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttClient: MqttClient) {
-    //val viewModel: ColorViewModel = viewModel()
     val context = LocalContext.current
     val colorState: ColorViewModel.ColorState by viewModel.colorState.collectAsStateWithLifecycle(
         lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
@@ -448,7 +456,6 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
 
         FloatingActionButton(
             onClick = {
-                //TODO: do it somewhere else
                 mqttClient.subscribe(user?.id ?: "-1")
                 mqttClient.publish(user?.id ?: "-1", null)
                 showPopup = true
@@ -490,17 +497,15 @@ fun WelcomePopup(mqttClient: MqttClient, onSave: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    Button(onClick = {
-                        if (name.isNotBlank()) {
-                            val user = Friend (
-                                name = name,
-                                id = IDGenerator.generateUniqueID(),
-                                devices = mutableListOf()
-                            )
-                            SharedPreferencesHelper.setUser(context, user)
-                            mqttClient.publish(user.id ?: "-1", user.name)
-                            onSave()
-                        }
+                    Button(enabled = name.isNotBlank(), onClick = {
+                        val user = Friend (
+                            name = name,
+                            id = IDGenerator.generateUniqueID(),
+                            devices = mutableListOf()
+                        )
+                        SharedPreferencesHelper.setUser(context, user)
+                        mqttClient.publish(user.id ?: "-1", user.name)
+                        onSave()
                     }) {
                         Text("Save")
                     }
@@ -562,14 +567,18 @@ fun FriendSelectionPopup(
                                 text = friend.name,
                                 fontWeight = FontWeight.Medium
                             )
-                            Text(text = friend.devices.first())
+                            if (friend.devices.isNotEmpty()) {
+                                Text(text = friend.devices.first())
+                            } else {
+                                Text(text = "no devices", fontStyle = FontStyle.Italic)
+                            }
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            Button(onClick = {
+            Button(enabled = selectedFriends.isNotEmpty(), onClick = {
                 selectedFriends.forEach {
                     mqttClient.publish(it.id ?: "-1", it.devices.first(), colorPalette)
                 }
@@ -606,5 +615,30 @@ fun IconText(iconId: Int, text: String) {
             fontSize = MaterialTheme.typography.titleSmall.fontSize,
             fontWeight = FontWeight.Normal
         )
+    }
+}
+
+@Composable
+fun InfoCard(user: Friend?, onClose: () -> Unit) {
+    Box {
+        Card (
+            modifier = Modifier
+                .padding(top = 10.dp)
+                .clickable { onClose() }
+        ) {
+            Column (
+                modifier = Modifier
+                    //.fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start
+            ) {
+                IconText(iconId = R.drawable.baseline_tag_24, text = user?.id ?: "-1")
+                IconText(iconId = R.drawable.baseline_person_24, text = user?.name ?: "No name")
+                if (user?.devices?.isNotEmpty() == true) {
+                    IconText(iconId = R.drawable.baseline_list_alt_24, text = user.devices.first())
+                }
+            }
+        }
     }
 }

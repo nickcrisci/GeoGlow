@@ -2,6 +2,11 @@ package com.example.geoglow
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.net.Uri
+import android.util.Log
+import androidx.exifinterface.media.ExifInterface
 import androidx.palette.graphics.Palette
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -10,6 +15,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 
 
 @SuppressLint("SimpleDateFormat")
@@ -48,7 +54,7 @@ fun jsonStringToFriendList(jsonString: String): List<Friend> {
     return friends.map { friend ->
         Friend(
             name = friend.name,
-            id = null,
+            id = friend.id,
             devices = friend.devices.toMutableList()
         )
     }
@@ -82,4 +88,26 @@ fun paletteToRgbList(palette: Palette): List<Array<Int>> {
     darkMuted?.let { convertToRgb(it)?.let { rgbList.add(it) } }
 
     return rgbList
+}
+
+//TODO: rotate image properly
+fun rotateImage(bitmap: Bitmap, uri: Uri): Bitmap {
+    try {
+        val exifInterface = ExifInterface(uri.path ?: "")
+        val orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) //ExifInterface.ORIENTATION_UNDEFINED
+        val matrix = Matrix()
+
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.setRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.setRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.setRotate(270f)
+        }
+
+        val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        Log.i("Utils", "rotatedBitmap: $rotatedBitmap")
+        return rotatedBitmap
+    } catch (e: IOException) {
+        Log.e("Utils","Error message: ${e.message}")
+        return bitmap
+    }
 }
