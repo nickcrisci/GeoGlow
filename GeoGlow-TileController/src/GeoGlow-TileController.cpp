@@ -23,6 +23,7 @@ unsigned long lastPublishTime = 30000;
 char mqttBroker[40];
 char mqttPort[6] = "1883";
 char nanoleafBaseUrl[55] = "";
+char nanoleafAuthToken[33] = "";
 char friendId[36] = "";
 char deviceId[36] = "";
 
@@ -40,7 +41,6 @@ void setup() {
     UUID uuid;
     strcpy(deviceId, uuid.toCharArray());
 
-
     if (SPIFFS.begin()) {
         Serial.println("mounted file system");
         if (SPIFFS.exists("/config.json")) {
@@ -55,10 +55,11 @@ void setup() {
                 JsonDocument jsonConfig;
                 deserializeJson(jsonConfig, buf.get());
                 Serial.println("parsed json");
-                strcpy(deviceId, jsonConfig["deviceId"]);
                 strcpy(mqttBroker, jsonConfig["mqttBroker"]);
                 strcpy(mqttPort, jsonConfig["mqttPort"]);
                 strcpy(nanoleafBaseUrl, jsonConfig["nanoleafBaseUrl"]);
+                strcpy(nanoleafAuthToken, jsonConfig["nanoleafAuthToken"]);
+                strcpy(deviceId, jsonConfig["deviceId"]);
                 strcpy(friendId, jsonConfig["friendId"]);
             } else {
                 Serial.println("failed to load json config");
@@ -105,8 +106,29 @@ void setup() {
     Serial.println("\tmqttBroker : " + String(mqttBroker));
     Serial.println("\tmqttPort : " + String(mqttPort));
     Serial.println("\tnanoleafBaseUrl : " + String(nanoleafBaseUrl));
+    Serial.println("\tnanoleafAuthToken : " + String(nanoleafAuthToken));
     Serial.println("\tfriendId : " + String(friendId));
     Serial.println("\tdeviceId : " + String(deviceId));
+
+    nanoleaf.setup(nanoleafBaseUrl, nanoleafAuthToken);
+    delay(1000);
+
+    while (true) {
+        Serial.print("Nanoleaf not connected trying to reconnect ...");
+
+        if (nanoleaf.isConnected()) {
+            Serial.println("connected");
+            break;
+        }
+        Serial.println("failed");
+
+        if (String newToken = nanoleaf.generateToken(); newToken != "") {
+            newToken.toCharArray(nanoleafAuthToken, sizeof nanoleafAuthToken);
+            nanoleaf.setup(nanoleafBaseUrl, nanoleafAuthToken);
+            shouldSaveConfig = true;
+        }
+        delay(5000);
+    }
 
     if (shouldSaveConfig) {
         Serial.println("saving config");
@@ -114,6 +136,7 @@ void setup() {
         jsonConfig["mqttBroker"] = mqttBroker;
         jsonConfig["mqttPort"] = mqttPort;
         jsonConfig["nanoleafBaseUrl"] = nanoleafBaseUrl;
+        jsonConfig["nanoleafAuthToken"] = nanoleafAuthToken;
         jsonConfig["friendId"] = friendId;
         jsonConfig["deviceId"] = deviceId;
 
@@ -126,12 +149,10 @@ void setup() {
         configFile.close();
     }
 
-    Serial.println("local ip");
+    Serial.print("local ip: ");
     Serial.println(WiFi.localIP());
     mqttClient.setup(mqttBroker, String(mqttPort).toInt());
     mqttClient.addTopicAdapter(&testAdapter);
-
-    nanoleaf.setup(nanoleafBaseUrl, "OmizkYRK3cMtYovrlb8rTvAdDtK2uZpu");
 }
 
 void loop() {

@@ -86,8 +86,7 @@ bool NanoleafApiWrapper::isConnected() {
 String NanoleafApiWrapper::generateToken() {
     JsonDocument jsonResponse;
     if (sendRequest("POST", "/new", nullptr, &jsonResponse, false)) {
-        if (const String strPayload = jsonResponse["auth_token"]; strPayload != nullptr) {
-            nanoleafAuthToken = strPayload;
+        if (const String strPayload = jsonResponse["auth_token"]; strPayload != nullptr && strPayload != "null") {
             return strPayload;
         }
     }
