@@ -11,14 +11,20 @@ public:
 
     void setup(const char *nanoleafBaseUrl, const char *nanoleafAuthToken);
 
+    bool isConnected();
+
+    String generateToken();
+
     bool setPower(const bool &state);
 
 private:
-    bool getData(const String &endpoint, JsonDocument &jsonResponse);
-
-    bool postData(const String &endpoint, const JsonDocument &jsonPayload);
-
-    bool putData(const String &endpoint, const JsonDocument &jsonPayload);
+    bool sendRequest(
+        const String &method,
+        const String &endpoint,
+        const JsonDocument *requestBody,
+        JsonDocument *responseBody,
+        bool useAuthToken
+    );
 
     String nanoleafBaseUrl;
     String nanoleafAuthToken;
