@@ -9,7 +9,7 @@ db = client["GeoGlow_db"]
 # Setup friend and device collections
 friend_col = db["friends"]
 device_col = db["devices"]
-
+daily_col = db["daily"]
 # Setup index to expire documents after 5 minutes
 device_col.create_index({"_timestamp": 1}, expireAfterSeconds = 5 * 60)
 
@@ -159,3 +159,19 @@ def get_all_friends_data() -> list:
     for friend in cursor:
         friends.append(get_friend_data(friend["friendId"]))
     return friends
+
+def add_to_daily(friendId: str, deviceId: str, colors) -> None:
+    friend_daily = daily_col.find_one({"friendId": friendId, "deviceId": deviceId})
+    if friend_daily:
+        daily_col.update_one({"_id": friend_daily["_id"]}, {"$push": {"color_data": colors}})
+        print("Updated friend with friendID: ", friendId)
+    else:
+        daily_col.insert_one({"friendId": friendId, "deviceId": deviceId, "color_data": [colors]})
+        print("Inserted friend with friendID: ", friendId)
+
+def get_friends_daily(friendId, deviceId):
+    friends_daily = daily_col.find_one({"friendId": friendId, "deviceId": deviceId})
+    if friends_daily:
+        return friends_daily["color_data"]
+    else: 
+        return None

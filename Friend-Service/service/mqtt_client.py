@@ -1,7 +1,7 @@
 import os
 import json
 import paho.mqtt.client as mqtt
-from database import register_friend, received_controller_ping, get_all_friends_data, find_friend
+from database import register_friend, received_controller_ping, get_all_friends_data, find_friend, add_to_daily
 
 SERVICE_TOPIC = "GeoGlow/Friend-Service"
 
@@ -148,6 +148,7 @@ def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
         return
     
     payload = json.loads(msg.payload.decode())
+    add_to_daily(friendId, deviceId, payload["color_palette"])
     processed_payload = __process_color_payload(payload)
 
     client.publish(f"{SERVICE_TOPIC}/{friendId}/{deviceId}", json.dumps(processed_payload))
@@ -172,4 +173,4 @@ def create_and_connect_client() -> mqtt.Client:
     client.on_message = __on_message
     client.on_subscribe = __on_subscribe
     client.connect(mqtt_broker, mqtt_port)
-    return client
+    return client    
