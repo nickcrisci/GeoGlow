@@ -8,6 +8,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import androidx.palette.graphics.Palette
+import com.example.geoglow.color_palette.PaletteGenerator
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
@@ -16,12 +17,13 @@ import java.util.Date
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.io.InputStream
 
 
 @SuppressLint("SimpleDateFormat")
 fun Context.createImageFile(): File {
-    val timeStamp = SimpleDateFormat("yyyy_MM_dd_HH:mm:ss").format(Date())
-    val imageFileName = "JPEG_" + timeStamp + "_"
+    //val timeStamp = SimpleDateFormat("yyyy_MM_dd HH:mm:ss").format(Date())
+    val imageFileName = "JPEG_" //+ timeStamp + "_"
     val image = File.createTempFile(
         imageFileName, /* prefix */
         ".jpg", /* suffix */
@@ -90,24 +92,24 @@ fun paletteToRgbList(palette: Palette): List<Array<Int>> {
     return rgbList
 }
 
+fun extractColorsColorThief(bitmap: Bitmap, colorCount: Int = 10): List<Array<Int>> {
+    val colorPalette = PaletteGenerator.compute(bitmap, colorCount)
+    return colorPalette?.map { color ->
+        arrayOf(color[0], color[1], color[2])
+    } ?: emptyList()
+}
+
+fun resizeBitmap(bitmap: Bitmap, factor: Int = 4): Bitmap {
+    val width = bitmap.width
+    val height = bitmap.height
+    val scaleWidth = width / factor
+    val scaleHeight = height / factor
+    return Bitmap.createScaledBitmap(bitmap, scaleWidth, scaleHeight, true)
+}
+
 //TODO: rotate image properly
-fun rotateImage(bitmap: Bitmap, uri: Uri): Bitmap {
-    try {
-        val exifInterface = ExifInterface(uri.path ?: "")
-        val orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) //ExifInterface.ORIENTATION_UNDEFINED
-        val matrix = Matrix()
-
-        when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.setRotate(90f)
-            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.setRotate(180f)
-            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.setRotate(270f)
-        }
-
-        val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-        Log.i("Utils", "rotatedBitmap: $rotatedBitmap")
-        return rotatedBitmap
-    } catch (e: IOException) {
-        Log.e("Utils","Error message: ${e.message}")
-        return bitmap
-    }
+fun rotateImage(bitmap: Bitmap): Bitmap {
+    val rotationDegrees =  90
+    val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 }

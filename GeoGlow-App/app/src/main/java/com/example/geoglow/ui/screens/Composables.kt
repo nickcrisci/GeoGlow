@@ -1,13 +1,20 @@
 package com.example.geoglow.ui.screens
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,11 +44,13 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,13 +60,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,6 +87,7 @@ import com.example.geoglow.R
 import com.example.geoglow.SharedPreferencesHelper
 import com.example.geoglow.createImageFile
 import com.example.geoglow.paletteToRgbList
+import kotlinx.coroutines.delay
 import java.util.Objects
 
 
@@ -96,13 +108,15 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
     val galleryLauncher =
         rememberLauncherForActivityResult(contract = CustomGalleryContract()) { uri ->
         uri?.let(viewModel::setColorState)
+        uri?.let(viewModel::updateColorList)
         navController.navigate(Screen.ImageScreen.route)
     }
     
     val cameraLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture()) { success ->
         if (success) {
-            imageUri.let(viewModel::setColorState)
+            viewModel.setColorState(imageUri, true)
+            viewModel.updateColorList(imageUri)
             navController.navigate(Screen.ImageScreen.route)
         } else {
             Log.e("Composables", "couldn't take picture")
@@ -129,7 +143,7 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 20.dp, end = 10.dp),
+                .padding(top = 12.dp, end = 10.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.End
         ) {
@@ -155,7 +169,7 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(10.dp),
+                .padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 35.dp),
             verticalArrangement = Arrangement.SpaceEvenly,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -163,7 +177,7 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    painter = painterResource(id = R.drawable.geoglow_logo),
                     contentDescription = null,
                     modifier = Modifier
                         .size(120.dp)
@@ -232,12 +246,18 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
     val colorState: ColorViewModel.ColorState by viewModel.colorState.collectAsStateWithLifecycle(
         lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     )
-    val imageBitmap: ImageBitmap? = colorState.imageBitmap
-    val palette: Palette? = colorState.palette
+    val imageBitmap = colorState.imageBitmap
+    val palette = colorState.androidPalette
+    val colorList = colorState.colorList
     val colorPalette = palette?.let { paletteToRgbList(it) } ?: emptyList()
     val user: Friend? = SharedPreferencesHelper.getUser(context)
+    val friendList = SharedPreferencesHelper.getFriendList(context)
     var showPopup by remember { mutableStateOf(false) }
 
+    BackHandler {
+        navController.navigate(Screen.MainScreen.route)
+        viewModel.resetColorState()
+    }
 
     TopAppBar(
         title = { Text(text = "") },
@@ -245,6 +265,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
             IconButton(
                 onClick = {
                     navController.navigate(Screen.MainScreen.route)
+                    viewModel.resetColorState()
                 }
             ) {
                 Icon(
@@ -255,10 +276,12 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
         }
     )
 
-    if (showPopup) {
+    if (showPopup && friendList.isNotEmpty()) {
         FriendSelectionPopup(
             navController,
-            colorPalette,
+            viewModel,
+            colorList ?: colorPalette, //colorPalette,
+            friendList,
             mqttClient,
             onDismiss = { showPopup = false }
         )
@@ -267,7 +290,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(10.dp),
+            .padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 35.dp),
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -277,7 +300,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
                 contentDescription = "chosen image",
                 modifier = Modifier
                     .padding(10.dp)
-                    .size(320.dp)
+                    .size(310.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .border(
                         1.0.dp,
@@ -293,7 +316,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
                 contentDescription = "default image",
                 modifier = Modifier
                     .padding(10.dp)
-                    .size(320.dp)
+                    .size(310.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .border(
                         1.0.dp,
@@ -304,155 +327,8 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
             )
         }
 
-        Column (
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row (
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = palette?.vibrantSwatch?.rgb?.let(::Color)
-                                ?: MaterialTheme.colorScheme.secondary,
-                            shape = RoundedCornerShape(20)
-                        )
-                        .weight(1f)
-                ) {
-                    Text(
-                        text = "Vibrant",
-                        color = palette?.vibrantSwatch?.bodyTextColor?.let(::Color)
-                            ?: MaterialTheme.colorScheme.onSecondary,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = palette?.darkVibrantSwatch?.rgb?.let(::Color)
-                                ?: MaterialTheme.colorScheme.secondary,
-                            shape = RoundedCornerShape(20)
-                        )
-                        .weight(1f)
-                ) {
-                    Text(
-                        text = "Dark Vibrant",
-                        color = palette?.darkVibrantSwatch?.bodyTextColor?.let(::Color)
-                            ?: MaterialTheme.colorScheme.onSecondary,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row (
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = palette?.lightVibrantSwatch?.rgb?.let(::Color)
-                                ?: MaterialTheme.colorScheme.secondary,
-                            shape = RoundedCornerShape(20)
-                        )
-                        .weight(1f)
-                ) {
-                    Text(
-                        text = "Light Vibrant",
-                        color = palette?.lightVibrantSwatch?.bodyTextColor?.let(::Color)
-                            ?: MaterialTheme.colorScheme.onSecondary,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = palette?.mutedSwatch?.rgb?.let(::Color)
-                                ?: MaterialTheme.colorScheme.secondary,
-                            shape = RoundedCornerShape(20)
-                        )
-                        .weight(1f)
-                ) {
-                    Text(
-                        text = "Muted",
-                        color = palette?.mutedSwatch?.bodyTextColor?.let(::Color)
-                            ?: MaterialTheme.colorScheme.onSecondary,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row (
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = palette?.darkMutedSwatch?.rgb?.let(::Color)
-                                ?: MaterialTheme.colorScheme.secondary,
-                            shape = RoundedCornerShape(20)
-                        )
-                        .weight(1f)
-                ) {
-                    Text(
-                        text = "Dark Muted",
-                        color = palette?.darkMutedSwatch?.bodyTextColor?.let(::Color)
-                            ?: MaterialTheme.colorScheme.onSecondary,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = palette?.lightMutedSwatch?.rgb?.let(::Color)
-                                ?: MaterialTheme.colorScheme.secondary,
-                            shape = RoundedCornerShape(20)
-                        )
-                        .weight(1f)
-                ) {
-                    Text(
-                        text = "Light Muted",
-                        color = palette?.lightMutedSwatch?.bodyTextColor?.let(::Color)
-                            ?: MaterialTheme.colorScheme.onSecondary,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-            }
-        }
+        if (colorList?.isNotEmpty() == true) ColorThiefPalette(colorList)
+        else LoadingAnimation() //AndroidPalette(palette)
 
         FloatingActionButton(
             onClick = {
@@ -518,18 +394,14 @@ fun WelcomePopup(mqttClient: MqttClient, onSave: () -> Unit) {
 @Composable
 fun FriendSelectionPopup(
     navController: NavController,
+    viewModel: ColorViewModel,
     colorPalette: List<Array<Int>>,
+    friends: List<Friend>,
     mqttClient: MqttClient,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val selectedFriends = remember { mutableStateListOf<Friend>() }
-    val friendList = SharedPreferencesHelper.getFriendList(context)
-    val friends = friendList.ifEmpty { listOf(
-        Friend("Anna", "47fh39cv", mutableListOf("366452")),
-        Friend("Hans", "kj876fnt", mutableListOf("767854")),
-        Friend("Peter", "0j6gd8nb", mutableListOf("364765"))
-    ) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -580,9 +452,14 @@ fun FriendSelectionPopup(
         confirmButton = {
             Button(enabled = selectedFriends.isNotEmpty(), onClick = {
                 selectedFriends.forEach {
-                    mqttClient.publish(it.id ?: "-1", it.devices.first(), colorPalette)
+                    if (it.devices.isNotEmpty()) {
+                        mqttClient.publish(it.id ?: "-1", it.devices.first(), colorPalette)
+                    } else {
+                        Log.i("Mqtt","Can't publish colors, as no devices are listed.")
+                    }
                 }
                 navController.navigate(Screen.MainScreen.route)
+                viewModel.resetColorState()
                 Toast.makeText(context, "Color palette was sent", Toast.LENGTH_LONG).show()
             }) {
                 Text("Confirm")
@@ -639,6 +516,258 @@ fun InfoCard(user: Friend?, onClose: () -> Unit) {
                     IconText(iconId = R.drawable.baseline_list_alt_24, text = user.devices.first())
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun AndroidPalette(palette: Palette?) {
+    Column (
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = palette?.vibrantSwatch?.rgb?.let(::Color)
+                            ?: MaterialTheme.colorScheme.secondary,
+                        shape = RoundedCornerShape(20)
+                    )
+                    .weight(1f)
+            ) {
+                Text(
+                    text = "Vibrant",
+                    color = palette?.vibrantSwatch?.bodyTextColor?.let(::Color)
+                        ?: MaterialTheme.colorScheme.onSecondary,
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = palette?.darkVibrantSwatch?.rgb?.let(::Color)
+                            ?: MaterialTheme.colorScheme.secondary,
+                        shape = RoundedCornerShape(20)
+                    )
+                    .weight(1f)
+            ) {
+                Text(
+                    text = "Dark Vibrant",
+                    color = palette?.darkVibrantSwatch?.bodyTextColor?.let(::Color)
+                        ?: MaterialTheme.colorScheme.onSecondary,
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = palette?.lightVibrantSwatch?.rgb?.let(::Color)
+                            ?: MaterialTheme.colorScheme.secondary,
+                        shape = RoundedCornerShape(20)
+                    )
+                    .weight(1f)
+            ) {
+                Text(
+                    text = "Light Vibrant",
+                    color = palette?.lightVibrantSwatch?.bodyTextColor?.let(::Color)
+                        ?: MaterialTheme.colorScheme.onSecondary,
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = palette?.mutedSwatch?.rgb?.let(::Color)
+                            ?: MaterialTheme.colorScheme.secondary,
+                        shape = RoundedCornerShape(20)
+                    )
+                    .weight(1f)
+            ) {
+                Text(
+                    text = "Muted",
+                    color = palette?.mutedSwatch?.bodyTextColor?.let(::Color)
+                        ?: MaterialTheme.colorScheme.onSecondary,
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = palette?.darkMutedSwatch?.rgb?.let(::Color)
+                            ?: MaterialTheme.colorScheme.secondary,
+                        shape = RoundedCornerShape(20)
+                    )
+                    .weight(1f)
+            ) {
+                Text(
+                    text = "Dark Muted",
+                    color = palette?.darkMutedSwatch?.bodyTextColor?.let(::Color)
+                        ?: MaterialTheme.colorScheme.onSecondary,
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = palette?.lightMutedSwatch?.rgb?.let(::Color)
+                            ?: MaterialTheme.colorScheme.secondary,
+                        shape = RoundedCornerShape(20)
+                    )
+                    .weight(1f)
+            ) {
+                Text(
+                    text = "Light Muted",
+                    color = palette?.lightMutedSwatch?.bodyTextColor?.let(::Color)
+                        ?: MaterialTheme.colorScheme.onSecondary,
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ColorThiefPalette(colorList: List<Array<Int>>) {
+    Column (
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        for (row in 0 until 5) {
+            Row (
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                for (col in 0 until 2) {
+                    val index = row * 2 + col
+                    if (index < colorList.size) {
+                        val colorArray = colorList[index]
+                        val color = Color(colorArray[0], colorArray[1], colorArray[2])
+
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = color,
+                                    shape = RoundedCornerShape(20)
+                                )
+                                .weight(1f)
+                        ) {
+                            Text(
+                                text = "(${colorArray[0]}, ${colorArray[1]}, ${colorArray[2]})",
+                                color = if (color.luminance() > 0.5) Color.Black else Color.White,
+                                fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                                fontWeight = FontWeight.Normal,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LoadingAnimation() {
+    val circleSize = 16.dp
+    val circleColor = MaterialTheme.colorScheme.secondary
+    val spaceBetween = 6.dp
+    val travelDistance = 14.dp
+    val distance = with(LocalDensity.current) { travelDistance.toPx() }
+
+    val circles = listOf(
+        remember { Animatable(initialValue = 0f) },
+        remember { Animatable(initialValue = 0f) },
+        remember { Animatable(initialValue = 0f) }
+    )
+    val circleValues = circles.map { it.value }
+
+    circles.forEachIndexed { index, animatable ->
+        LaunchedEffect(key1 = animatable) {
+            delay(index * 100L)
+            animatable.animateTo(
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = keyframes {
+                        durationMillis = 1200
+                        0.0f at 0 using LinearOutSlowInEasing
+                        1.0f at 300 using LinearOutSlowInEasing
+                        0.0f at 600 using LinearOutSlowInEasing
+                        0.0f at 1200 using LinearOutSlowInEasing
+                    },
+                    repeatMode = RepeatMode.Restart
+                )
+            )
+        }
+    }
+
+    Row(
+        modifier = Modifier,
+        horizontalArrangement = Arrangement.spacedBy(spaceBetween),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        circleValues.forEachIndexed { index, value ->
+            Box(
+                modifier = Modifier
+                    .size(circleSize)
+                    .graphicsLayer { translationY = -value * distance }
+                    .background(
+                        color = circleColor,
+                        shape = CircleShape
+                    )
+            )
         }
     }
 }
