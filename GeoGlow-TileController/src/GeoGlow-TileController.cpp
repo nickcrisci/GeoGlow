@@ -170,7 +170,7 @@ void loop() {
         jsonPayload["panelsIds"] = JsonArray();
 
         for (const String panelId: nanoleaf.getPanelIds()) {
-            jsonPayload["panelsIds"].add(panelId);
+            jsonPayload["panelIds"].add(panelId);
         }
 
         mqttClient.publish("GeoGlow/ping", jsonPayload);
