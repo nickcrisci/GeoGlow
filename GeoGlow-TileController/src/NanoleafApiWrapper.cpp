@@ -12,7 +12,7 @@ void NanoleafApiWrapper::setup(const char *nanoleafBaseUrl, const char *nanoleaf
 
 
 bool NanoleafApiWrapper::sendRequest(const String &method, const String &endpoint, const JsonDocument *requestBody,
-                                     JsonDocument *responseBody, bool useAuthToken) {
+                                     JsonDocument *responseBody, const bool useAuthToken) {
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
         String url = nanoleafBaseUrl;
@@ -94,9 +94,61 @@ String NanoleafApiWrapper::generateToken() {
 }
 
 
+bool NanoleafApiWrapper::identify() {
+    return sendRequest("PUT", "/identify", nullptr, nullptr, true);
+}
+
+std::vector<String> NanoleafApiWrapper::getPanelIds() {
+    JsonDocument jsonResponse;
+
+    std::vector<String> panelIds;
+
+    if (sendRequest("GET", "/panelLayout/layout", nullptr, &jsonResponse, true) &&
+        jsonResponse["positionData"] != nullptr
+    ) {
+        const size_t arraySize = jsonResponse["positionData"].size();
+
+        for (size_t i = 0; i < arraySize; i++) {
+            if (auto panelId = jsonResponse["positionData"][i]["panelId"].as<String>(); panelId != "0") {
+                panelIds.push_back(panelId);
+            }
+        }
+    }
+
+    return panelIds;
+}
+
+
 bool NanoleafApiWrapper::setPower(const bool &state) {
     JsonDocument jsonPayload;
-    jsonPayload["on"].to<JsonObject>();
+    jsonPayload["on"] = JsonObject();
     jsonPayload["on"]["value"] = state;
     return sendRequest("PUT", "/state", &jsonPayload, nullptr, true);
+}
+
+
+bool NanoleafApiWrapper::setStaticColors(const JsonObject &doc) {
+    String animData = "";
+    const unsigned int tileCount = doc.size();
+    animData += String(tileCount) + " ";
+
+    for (JsonPair kv: doc) {
+        String tileId = kv.key().c_str();
+        auto rgb = kv.value().as<JsonArray>();
+        animData += tileId + " 1 " + String(rgb[0].as<int>()) + " " + String(rgb[1].as<int>()) + " " +
+                String(rgb[2].as<int>()) + " 0 " + String(static_cast<int>(floor(random(5, 50)))) + " ";
+    }
+
+    JsonDocument jsonPayload;
+    jsonPayload["write"] = JsonObject();
+    jsonPayload["write"]["command"] = "display";
+    jsonPayload["write"]["version"] = "2.0";
+    jsonPayload["write"]["animType"] = "custom";
+    jsonPayload["write"]["animData"] = animData;
+    jsonPayload["write"]["loop"] = false;
+    jsonPayload["write"]["palette"] = JsonArray();
+    jsonPayload["write"]["palette"].add(JsonObject());
+    jsonPayload["write"]["palette"][0]["hue"] = 0;
+
+    return sendRequest("PUT", "/effects", &jsonPayload, nullptr, true);
 }

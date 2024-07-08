@@ -4,6 +4,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
+#include <vector>
 
 class NanoleafApiWrapper {
 public:
@@ -15,7 +16,13 @@ public:
 
     String generateToken();
 
+    bool identify();
+
+    std::vector<String> getPanelIds();
+
     bool setPower(const bool &state);
+
+    bool setStaticColors(const JsonObject &doc);
 
 private:
     bool sendRequest(
