@@ -11,7 +11,7 @@ class MQTTClient {
 public:
     explicit MQTTClient(WiFiClient &wifiClient);
 
-    void setup(const char *mqttBroker, int mqttPort);
+    void setup(const char *mqttBroker, int mqttPort, const char *friendId, const char *deviceId);
 
     void loop();
 
@@ -22,11 +22,15 @@ public:
 private:
     void reconnect();
 
-    static void callback(char *topic, const byte *payload, unsigned int length);
+    char *buildTopic(const TopicAdapter *adapter) const;
+
+    void callback(char *topic, const byte *payload, unsigned int length) const;
 
     static bool matches(const char *subscribedTopic, const char *receivedTopic);
 
     PubSubClient client;
+    const char *friendId{};
+    const char *deviceId{};
     static std::vector<TopicAdapter *> topicAdapters;
 };
 

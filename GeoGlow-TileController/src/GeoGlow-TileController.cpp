@@ -9,14 +9,14 @@
 #include "MQTTClient.h"
 #include "NanoleafApiWrapper.h"
 
-#include "TestAdapter.h"
+#include "ColorPaletteAdapter.h"
 
 WiFiManager wifiManager;
 WiFiClient wifiClient;
 MQTTClient mqttClient(wifiClient);
 NanoleafApiWrapper nanoleaf(wifiClient);
 
-TestAdapter testAdapter;
+ColorPaletteAdapter colorPaletteAdapter(nanoleaf);
 
 unsigned long lastPublishTime = 30000;
 
@@ -103,18 +103,21 @@ void setup() {
     deviceId[sizeof(deviceId) - 1] = '\0';
 
     Serial.println("The values in the file are: ");
-    Serial.println("\tmqttBroker : " + String(mqttBroker));
-    Serial.println("\tmqttPort : " + String(mqttPort));
-    Serial.println("\tnanoleafBaseUrl : " + String(nanoleafBaseUrl));
-    Serial.println("\tnanoleafAuthToken : " + String(nanoleafAuthToken));
-    Serial.println("\tfriendId : " + String(friendId));
-    Serial.println("\tdeviceId : " + String(deviceId));
+    Serial.println("\tmqttBroker : \t\t" + String(mqttBroker));
+    Serial.println("\tmqttPort : \t\t" + String(mqttPort));
+    Serial.println("\tnanoleafBaseUrl : \t" + String(nanoleafBaseUrl));
+    Serial.println("\tnanoleafAuthToken : \t" + String(nanoleafAuthToken));
+    Serial.println("\tfriendId : \t\t" + String(friendId));
+    Serial.println("\tdeviceId : \t\t" + String(deviceId));
+
+    Serial.print("local ip: ");
+    Serial.println(WiFi.localIP());
 
     nanoleaf.setup(nanoleafBaseUrl, nanoleafAuthToken);
     delay(1000);
 
     while (true) {
-        Serial.print("Nanoleaf not connected trying to reconnect ...");
+        Serial.print("Attempting Nanoleaf connection...");
 
         if (nanoleaf.isConnected()) {
             Serial.println("connected");
@@ -149,10 +152,12 @@ void setup() {
         configFile.close();
     }
 
-    Serial.print("local ip: ");
-    Serial.println(WiFi.localIP());
-    mqttClient.setup(mqttBroker, String(mqttPort).toInt());
-    mqttClient.addTopicAdapter(&testAdapter);
+    mqttClient.setup(mqttBroker, String(mqttPort).toInt(), friendId, deviceId);
+    mqttClient.addTopicAdapter(&colorPaletteAdapter);
+
+    nanoleaf.setPower(true);
+    delay(1500);
+    nanoleaf.setPower(false);
 }
 
 void loop() {
@@ -162,6 +167,12 @@ void loop() {
         JsonDocument jsonPayload;
         jsonPayload["friendId"] = friendId;
         jsonPayload["deviceId"] = deviceId;
+        jsonPayload["panelsIds"] = JsonArray();
+
+        for (const String panelId: nanoleaf.getPanelIds()) {
+            jsonPayload["panelsIds"].add(panelId);
+        }
+
         mqttClient.publish("GeoGlow/ping", jsonPayload);
 
         lastPublishTime = millis();

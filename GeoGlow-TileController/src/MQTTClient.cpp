@@ -6,9 +6,20 @@ MQTTClient::MQTTClient(WiFiClient &wifiClient)
     : client(wifiClient) {
 }
 
-void MQTTClient::setup(const char *mqttBroker, const int mqttPort) {
+void MQTTClient::setup(const char *mqttBroker, const int mqttPort, const char *friendId, const char *deviceId) {
     client.setServer(mqttBroker, mqttPort);
+
+    auto callback = [this](char *topic, const byte *payload, const unsigned int length) {
+        this->callback(topic, payload, length);
+    };
+
+    std::function<void(char *, uint8_t *, unsigned int)> function = callback;
+
     client.setCallback(callback);
+    client.setBufferSize(2048);
+
+    this->friendId = friendId;
+    this->deviceId = deviceId;
 }
 
 void MQTTClient::loop() {
@@ -24,7 +35,7 @@ void MQTTClient::reconnect() {
         if (client.connect("GeoGlow")) {
             Serial.println("connected");
             for (const auto adapter: topicAdapters) {
-                client.subscribe(adapter->getTopic());
+                client.subscribe(buildTopic(adapter));
             }
         } else {
             Serial.print("failed, rc=");
@@ -45,14 +56,37 @@ void MQTTClient::publish(const char *topic, const JsonDocument &jsonPayload) {
     }
 }
 
+char *MQTTClient::buildTopic(const TopicAdapter *adapter) const {
+    const size_t topicLength = strlen("GeoGlow/") +
+                               strlen(friendId) + 1 +
+                               strlen(deviceId) + 1 +
+                               strlen(adapter->getTopic()) + 1;
+
+    const auto topic = static_cast<char *>(malloc(topicLength));
+
+    if (topic == nullptr) {
+        return nullptr;
+    }
+
+    strcpy(topic, "GeoGlow/");
+    strcat(topic, friendId);
+    strcat(topic, "/");
+    strcat(topic, deviceId);
+    strcat(topic, "/");
+    strcat(topic, adapter->getTopic());
+
+    return topic;
+}
+
+
 void MQTTClient::addTopicAdapter(TopicAdapter *adapter) {
     topicAdapters.push_back(adapter);
     if (client.connected()) {
-        client.subscribe(adapter->getTopic());
+        client.subscribe(buildTopic(adapter));
     }
 }
 
-void MQTTClient::callback(char *topic, const byte *payload, const unsigned int length) {
+void MQTTClient::callback(char *topic, const byte *payload, const unsigned int length) const {
     char payloadBuffer[length + 1];
     memcpy(payloadBuffer, payload, length);
     payloadBuffer[length] = '\0';
@@ -68,7 +102,7 @@ void MQTTClient::callback(char *topic, const byte *payload, const unsigned int l
     }
 
     for (const auto adapter: topicAdapters) {
-        if (matches(adapter->getTopic(), topic)) {
+        if (matches(buildTopic(adapter), topic)) {
             adapter->callback(topic, jsonDocument.as<JsonObject>(), length);
             return;
         }
