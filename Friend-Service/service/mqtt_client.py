@@ -141,11 +141,18 @@ def __process_color_payload(payload: dict) -> dict:
             # Afterwards return the processed payload
     return payload
 
-def __color_tile_mapping(payload: dict) -> dict:
+def __map_color_tiles(friendId, deviceId, colors) -> dict:
     # TODO: Add more complex mapping algorithm
     #       For example by taking into account the position and orientation
     #       of tiles and the image
-    return payload
+
+    device = db.find_device(friendId, deviceId)
+    if device is None:
+        print("Couldn't find device with id: ", deviceId)
+
+    tiles = device["panelIds"]
+    colors = colors[:len(tiles)]
+    return dict(zip(tiles, colors))
 
 def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     sub_topics = msg.topic.split("/")
@@ -157,8 +164,9 @@ def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
         return
     
     payload = json.loads(msg.payload.decode())
+    color_tile_mapping = __map_color_tiles(friendId, deviceId, payload["color_palette"])
     db.add_to_daily(friendId, deviceId, payload["color_palette"])
-    processed_payload = __process_color_payload(payload)
+    processed_payload = __process_color_payload(color_tile_mapping)
 
     client.publish(f"{SERVICE_TOPIC}/{friendId}/{deviceId}", json.dumps(processed_payload))
 

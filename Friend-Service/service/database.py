@@ -122,11 +122,7 @@ def find_friend(friendId: str):
         return None
     
 def find_device(friendId: str, deviceId: str):
-    cursor = device_col.find({"friendId": friendId, "deviceId": deviceId})
-    try:
-        return cursor.next()
-    except StopIteration:
-        return None
+    return device_col.find_one({"friendId": friendId, "deviceId": deviceId})
 
 def get_friend_data(friendId: str) -> dict:
     """
