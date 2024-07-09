@@ -1,4 +1,5 @@
 import os
+import random
 import json
 import paho.mqtt.client as mqtt
 import database as db
@@ -131,15 +132,30 @@ def __on_api(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     if payload["command"] == "requestDeviceIds":
         data = db.get_friend_data(friendId)
         client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(data))
-    #if payload["command"] == "requestFriendIDs":
-    #    deviceIds = db.get_all_friends_data()
-    #    client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(deviceIds))
 
 def __process_color_payload(payload: dict) -> dict:
     # TODO: Add further computation of payload here
             # (e.g. encryption of payload)
             # Afterwards return the processed payload
     return payload
+
+def __fill_with_duplicates(colors: list, size: int) -> list:
+    filledColors = []
+    for i in range(0, size):
+        filledColors.append(colors[i % len(colors)])
+    return filledColors
+
+def __fill_with_interpolates(colors: list, size: int) -> list:
+    filledColors = colors
+    while len(filledColors) < size:
+        [color1, color2] = random.choices(colors, k=2)
+        interpolatedColor = [
+            min(color1[0] + color2[0], 255),
+            min(color1[1] + color2[1], 255),
+            min(color1[2] + color2[2], 255),
+        ]
+        filledColors.append(interpolatedColor)
+    return filledColors
 
 def __map_color_tiles(friendId, deviceId, colors) -> dict:
     # TODO: Add more complex mapping algorithm
@@ -151,7 +167,13 @@ def __map_color_tiles(friendId, deviceId, colors) -> dict:
         print("Couldn't find device with id: ", deviceId)
 
     tiles = device["panelIds"]
-    colors = colors[:len(tiles)]
+    numTiles = len(tiles)
+    if len(colors) < numTiles:
+        # Different tactics for filling the color list can be applied
+        # 2 Examples: Duplicating colors or interpolating colors
+        colors = __fill_with_interpolates(colors, numTiles) # Change this line to user other tactics
+    else:
+        colors = colors[:numTiles]
     return dict(zip(tiles, colors))
 
 def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
