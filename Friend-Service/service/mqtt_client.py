@@ -1,7 +1,7 @@
 import os
 import json
 import paho.mqtt.client as mqtt
-from database import register_friend, received_controller_ping, get_all_friends_data, find_friend, add_to_daily
+import database as db
 
 SERVICE_TOPIC = "GeoGlow/Friend-Service"
 
@@ -109,7 +109,7 @@ def __on_ping(msg: mqtt.MQTTMessage) -> None:
     """
     payload = json.loads(msg.payload.decode())
 
-    received_controller_ping(payload)
+    db.received_controller_ping(payload)
 
 # TODO: The request friendIds currently gets all friends, implement seperate commands for a single friend and all friends
 def __on_api(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
@@ -129,7 +129,7 @@ def __on_api(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     payload = json.loads(msg.payload.decode())
     friendId = payload["friendId"]
     if payload["command"] == "requestFriendIDs":
-        deviceIds = get_all_friends_data()
+        deviceIds = db.get_all_friends_data()
         client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(deviceIds))
 
 def __process_color_payload(payload: dict) -> dict:
@@ -143,12 +143,12 @@ def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     deviceId = sub_topics[-1]
     friendId = sub_topics[-2]
 
-    if find_friend(friendId) is None:
+    if db.find_friend(friendId) is None:
         print(f"Friend with friendId: {friendId} not found.")
         return
     
     payload = json.loads(msg.payload.decode())
-    add_to_daily(friendId, deviceId, payload["color_palette"])
+    db.add_to_daily(friendId, deviceId, payload["color_palette"])
     processed_payload = __process_color_payload(payload)
 
     client.publish(f"{SERVICE_TOPIC}/{friendId}/{deviceId}", json.dumps(processed_payload))

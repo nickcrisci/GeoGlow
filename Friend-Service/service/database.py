@@ -20,7 +20,7 @@ device_dummy_data = [
 ]
 
 friend_dummy_data = [
-    { "name": "Nick", "friendId": "nick" },
+    { "name": "Nick", "friendId": "TestFriendId" },
     { "name": "Finn", "friendId": "finn" },
     { "name": "Katy", "friendId": "katy" }
 ]
@@ -29,7 +29,7 @@ for i in range(0, 3):
     device_col.insert_one(device_dummy_data[i])
     friend_col.insert_one(friend_dummy_data[i])
 
-def register_device(friendId: str, deviceId: str):
+def register_device(payload: dict) -> None:
     """
     Registers a new device for a friend by inserting a document into the device collection.
 
@@ -41,10 +41,12 @@ def register_device(friendId: str, deviceId: str):
         None
     """
     data = {
-        "friendId": friendId,
-        "deviceId": deviceId,
+        "friendId": payload["friendId"],
+        "deviceId": payload["deviceId"],
+        "panelIds": payload["panelIds"],
         "_timestamp": datetime.now(UTC)
     }
+
     result = device_col.insert_one(data)
     print(f"Document inserted successfully! ID: {result.inserted_id}")
 
@@ -61,14 +63,14 @@ def received_controller_ping(payload: dict) -> None:
     """
     timestamp = datetime.now(UTC)
     update = {"$set": {"_timestamp": timestamp}}
-    friendId, deviceId = payload["deviceId"], payload["friendId"]
+    deviceId = payload["deviceId"]
     update_result = device_col.update_one({"deviceId": deviceId}, update)
 
     # First ping is a register
     if update_result.modified_count == 1:
         print(f"Updated timestamp of controller with ID '{deviceId}' successfully")
     else:
-        register_device(friendId, deviceId)
+        register_device(payload)
 
 def register_friend(friendId: str, name: str = "!Anon") -> None:
     """
