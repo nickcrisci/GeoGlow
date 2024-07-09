@@ -128,14 +128,23 @@ def __on_api(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     """
     payload = json.loads(msg.payload.decode())
     friendId = payload["friendId"]
-    if payload["command"] == "requestFriendIDs":
-        deviceIds = db.get_all_friends_data()
-        client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(deviceIds))
+    if payload["command"] == "requestDeviceIds":
+        data = db.get_friend_data(friendId)
+        client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(data))
+    #if payload["command"] == "requestFriendIDs":
+    #    deviceIds = db.get_all_friends_data()
+    #    client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(deviceIds))
 
 def __process_color_payload(payload: dict) -> dict:
     # TODO: Add further computation of payload here
             # (e.g. encryption of payload)
             # Afterwards return the processed payload
+    return payload
+
+def __color_tile_mapping(payload: dict) -> dict:
+    # TODO: Add more complex mapping algorithm
+    #       For example by taking into account the position and orientation
+    #       of tiles and the image
     return payload
 
 def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:

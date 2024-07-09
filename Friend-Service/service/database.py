@@ -14,9 +14,9 @@ daily_col = db["daily"]
 device_col.create_index({"_timestamp": 1}, expireAfterSeconds = 5 * 60)
 
 device_dummy_data = [
-    { "friendId": "nick", "deviceId" : "123" },
-    { "friendId": "nick", "deviceId" : "456" },
-    { "friendId": "finn", "deviceId" : "456" }
+    { "friendId": "TestFriendId", "deviceId" : "123", "panelIds": [1,2,3]},
+    { "friendId": "nick", "deviceId" : "456", "panelIds": [1,2,3]},
+    { "friendId": "finn", "deviceId" : "456", "panelIds": [1,2,3]}
 ]
 
 friend_dummy_data = [
@@ -24,10 +24,6 @@ friend_dummy_data = [
     { "name": "Finn", "friendId": "finn" },
     { "name": "Katy", "friendId": "katy" }
 ]
-
-for i in range(0, 3):
-    device_col.insert_one(device_dummy_data[i])
-    friend_col.insert_one(friend_dummy_data[i])
 
 def register_device(payload: dict) -> None:
     """
@@ -142,17 +138,13 @@ def get_friend_data(friendId: str) -> dict:
     Returns:
         dict: A dictionary containing the friend's data and associated devices.
     """
-    cursor = friend_col.find({"friendId": friendId}, {'_id': False})
-    friend = None
-    # If the friend with id friendId is not registered yet StopIteration will be thrown
-    try:
-        friend = cursor.next()
-    except StopIteration:
+    friend = friend_col.find_one({"friendId": friendId}, {'_id': False})
+    if friend == None:
         register_friend(friendId)
-        friend = friend_col.find({"friendId": friendId}, {'_id': False}).next()
-    finally:
-        devices = _get_friends_devices(friendId)
-        friend["devices"] = devices
+        friend = friend_col.find_one({"friendId": friendId}, {'_id': False})
+    
+    devices = _get_friends_devices(friendId)
+    friend["devices"] = devices
     return friend
 
 def get_all_friends_data() -> list:
@@ -177,3 +169,7 @@ def get_friends_daily(friendId, deviceId):
         return friends_daily["color_data"]
     else: 
         return None
+    
+for i in range(0, 3):
+    register_device(device_dummy_data[i])
+    friend_col.insert_one(friend_dummy_data[i])
