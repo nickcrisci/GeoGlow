@@ -1,7 +1,6 @@
 package com.example.geoglow.ui.screens
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -10,11 +9,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,7 +29,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,8 +45,10 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -253,6 +256,8 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
     val user: Friend? = SharedPreferencesHelper.getUser(context)
     val friendList = SharedPreferencesHelper.getFriendList(context)
     var showPopup by remember { mutableStateOf(false) }
+    val tabs = listOf("Android Palette", "Color Thief")
+    var tabIndex by remember { mutableStateOf(0) }
 
     BackHandler {
         navController.navigate(Screen.MainScreen.route)
@@ -299,8 +304,8 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
                 bitmap = imageBitmap,
                 contentDescription = "chosen image",
                 modifier = Modifier
-                    .padding(10.dp)
-                    .size(310.dp)
+                    .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)
+                    .size(290.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .border(
                         1.0.dp,
@@ -315,8 +320,8 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
                 painter = painterResource(id = R.drawable.ic_launcher_foreground),
                 contentDescription = "default image",
                 modifier = Modifier
-                    .padding(10.dp)
-                    .size(310.dp)
+                    .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)
+                    .size(290.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .border(
                         1.0.dp,
@@ -327,18 +332,30 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
             )
         }
 
-        if (colorList?.isNotEmpty() == true) ColorThiefPalette(colorList)
-        else LoadingAnimation() //AndroidPalette(palette)
+        TabRow(selectedTabIndex = tabIndex) {
+            tabs.forEachIndexed { index, title ->
+                Tab(text = { Text(title) },
+                    selected = tabIndex == index,
+                    onClick = { tabIndex = index }
+                )
+            }
+        }
+
+        when (tabIndex) {
+            0 -> AndroidPalette(palette)
+            1 -> if (colorList?.isNotEmpty() == true) ColorThiefPalette(colorList) else LoadingAnimation()
+        }
 
         FloatingActionButton(
             onClick = {
-                mqttClient.subscribe(user?.id ?: "-1")
-                mqttClient.publish(user?.id ?: "-1", null)
+                mqttClient.subscribe(user?.friendId ?: "-1")
+                mqttClient.publish(user?.friendId ?: "-1", null)
                 showPopup = true
             },
             modifier = Modifier
                 .align(alignment = Alignment.End)
                 .padding(end = 10.dp)
+                .size(50.dp)
         ) {
             Icon(
                 imageVector = ImageVector.vectorResource(id = R.drawable.baseline_check_24),
@@ -376,11 +393,11 @@ fun WelcomePopup(mqttClient: MqttClient, onSave: () -> Unit) {
                     Button(enabled = name.isNotBlank(), onClick = {
                         val user = Friend (
                             name = name,
-                            id = IDGenerator.generateUniqueID(),
+                            friendId = IDGenerator.generateUniqueID(),
                             devices = mutableListOf()
                         )
                         SharedPreferencesHelper.setUser(context, user)
-                        mqttClient.publish(user.id ?: "-1", user.name)
+                        mqttClient.publish(user.friendId ?: "-1", user.name)
                         onSave()
                     }) {
                         Text("Save")
@@ -453,7 +470,7 @@ fun FriendSelectionPopup(
             Button(enabled = selectedFriends.isNotEmpty(), onClick = {
                 selectedFriends.forEach {
                     if (it.devices.isNotEmpty()) {
-                        mqttClient.publish(it.id ?: "-1", it.devices.first(), colorPalette)
+                        mqttClient.publish(it.friendId ?: "-1", it.devices.first(), colorPalette)
                     } else {
                         Log.i("Mqtt","Can't publish colors, as no devices are listed.")
                     }
@@ -510,7 +527,7 @@ fun InfoCard(user: Friend?, onClose: () -> Unit) {
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.Start
             ) {
-                IconText(iconId = R.drawable.baseline_tag_24, text = user?.id ?: "-1")
+                IconText(iconId = R.drawable.baseline_tag_24, text = user?.friendId ?: "-1")
                 IconText(iconId = R.drawable.baseline_person_24, text = user?.name ?: "No name")
                 if (user?.devices?.isNotEmpty() == true) {
                     IconText(iconId = R.drawable.baseline_list_alt_24, text = user.devices.first())

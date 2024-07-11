@@ -4,20 +4,15 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
-import android.net.Uri
+import android.os.Build
 import android.util.Log
-import androidx.exifinterface.media.ExifInterface
 import androidx.palette.graphics.Palette
 import com.example.geoglow.color_palette.PaletteGenerator
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.IOException
-import java.io.InputStream
 
 
 @SuppressLint("SimpleDateFormat")
@@ -56,7 +51,7 @@ fun jsonStringToFriendList(jsonString: String): List<Friend> {
     return friends.map { friend ->
         Friend(
             name = friend.name,
-            id = friend.id,
+            friendId = friend.friendId,
             devices = friend.devices.toMutableList()
         )
     }
@@ -99,7 +94,7 @@ fun extractColorsColorThief(bitmap: Bitmap, colorCount: Int = 10): List<Array<In
     } ?: emptyList()
 }
 
-fun resizeBitmap(bitmap: Bitmap, factor: Int = 4): Bitmap {
+fun resizeBitmap(bitmap: Bitmap, factor: Int = 5): Bitmap { //4
     val width = bitmap.width
     val height = bitmap.height
     val scaleWidth = width / factor
@@ -109,7 +104,13 @@ fun resizeBitmap(bitmap: Bitmap, factor: Int = 4): Bitmap {
 
 //TODO: rotate image properly
 fun rotateImage(bitmap: Bitmap): Bitmap {
-    val rotationDegrees =  90
-    val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    Log.i("util", "Build.MANUFACTURER: ${Build.MANUFACTURER}")
+
+    if (Build.MANUFACTURER == "samsung") {
+        val rotationDegrees =  90
+        val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    } else {
+        return bitmap
+    }
 }
