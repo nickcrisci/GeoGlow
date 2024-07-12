@@ -88,10 +88,15 @@ fun paletteToRgbList(palette: Palette): List<Array<Int>> {
 }
 
 fun extractColorsColorThief(bitmap: Bitmap, colorCount: Int = 10): List<Array<Int>> {
-    val colorPalette = PaletteGenerator.compute(bitmap, colorCount)
-    return colorPalette?.map { color ->
-        arrayOf(color[0], color[1], color[2])
-    } ?: emptyList()
+    try {
+        val colorPalette = PaletteGenerator.compute(bitmap, colorCount)
+        return colorPalette?.map { color ->
+            arrayOf(color[0], color[1], color[2])
+        } ?: emptyList()
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return emptyList()
+    }
 }
 
 fun resizeBitmap(bitmap: Bitmap, factor: Int = 5): Bitmap { //4

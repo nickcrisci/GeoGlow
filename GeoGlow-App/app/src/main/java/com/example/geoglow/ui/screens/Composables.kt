@@ -285,7 +285,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
         FriendSelectionPopup(
             navController,
             viewModel,
-            colorList ?: colorPalette, //colorPalette,
+            if (tabIndex == 1 && colorList != null) colorList else colorPalette, //colorPalette,
             friendList,
             mqttClient,
             onDismiss = { showPopup = false }
@@ -471,6 +471,7 @@ fun FriendSelectionPopup(
                 selectedFriends.forEach {
                     if (it.devices.isNotEmpty()) {
                         mqttClient.publish(it.friendId ?: "-1", it.devices.first(), colorPalette)
+                        //TODO: ist das hier die richtige ID? -> eigene Id oder FriendId??
                     } else {
                         Log.i("Mqtt","Can't publish colors, as no devices are listed.")
                     }
