@@ -130,7 +130,7 @@ def __on_api(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     payload = json.loads(msg.payload.decode())
     friendId = payload["friendId"]
     if payload["command"] == "requestDeviceIds":
-        data = db.get_friend_data(friendId)
+        data = db.get_all_friends_data()
         client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(data))
 
 def __process_color_payload(payload: dict) -> dict:
@@ -157,6 +157,12 @@ def __fill_with_interpolates(colors: list, size: int) -> list:
         filledColors.append(interpolatedColor)
     return filledColors
 
+def __fill_color_list(colors: list, size: int, strategy) -> list:
+    if strategy == "duplicate":
+        return __fill_with_duplicates(colors, size)
+    if strategy == "interpolate":
+        return __fill_with_interpolates(colors, size)
+
 def __map_color_tiles(friendId, deviceId, colors) -> dict:
     # TODO: Add more complex mapping algorithm
     #       For example by taking into account the position and orientation
@@ -171,7 +177,7 @@ def __map_color_tiles(friendId, deviceId, colors) -> dict:
     if len(colors) < numTiles:
         # Different tactics for filling the color list can be applied
         # 2 Examples: Duplicating colors or interpolating colors
-        colors = __fill_with_interpolates(colors, numTiles) # Change this line to user other tactics
+        colors = __fill_color_list(colors, numTiles, "interpolate") # Change this line to user other tactics
     else:
         colors = colors[:numTiles]
     return dict(zip(tiles, colors))
@@ -181,7 +187,8 @@ def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     deviceId = sub_topics[-1]
     friendId = sub_topics[-2]
 
-    if db.find_friend(friendId) is None:
+    friend = db.find_friend(friendId)
+    if friend is None:
         print(f"Friend with friendId: {friendId} not found.")
         return
     
@@ -190,7 +197,8 @@ def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     db.add_to_daily(friendId, deviceId, payload["color_palette"])
     processed_payload = __process_color_payload(color_tile_mapping)
 
-    client.publish(f"{SERVICE_TOPIC}/{friendId}/{deviceId}", json.dumps(processed_payload))
+    #client.publish(f"{SERVICE_TOPIC}/{friendId}/{deviceId}", json.dumps(processed_payload))
+    client.publish(f"GeoGlow/{friendId}/{deviceId}/color", json.dumps(processed_payload))
 
 def create_and_connect_client() -> mqtt.Client:
     """
