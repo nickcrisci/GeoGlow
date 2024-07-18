@@ -14,15 +14,15 @@ daily_col = db["daily"]
 device_col.create_index({"_timestamp": 1}, expireAfterSeconds = 5 * 60)
 
 device_dummy_data = [
-    { "friendId": "TestFriendId", "deviceId" : "123", "panelIds": [1,2,3]},
-    { "friendId": "nick", "deviceId" : "456", "panelIds": [1,2, 3]},
-    { "friendId": "katy", "deviceId" : "456", "panelIds": [1,2,3]}
+    { "friendId": "Anakin", "deviceId" : "123", "panelIds": [1,2,3]},
+    { "friendId": "Ahsoka", "deviceId" : "456", "panelIds": [1,2, 3]},
+    { "friendId": "Padme", "deviceId" : "456", "panelIds": [1,2,3]}
 ]
 
 friend_dummy_data = [
-    { "name": "Nick", "friendId": "TestFriendId" },
-    { "name": "Finn", "friendId": "2609126b" },
-    { "name": "Katy", "friendId": "katy" }
+    { "name": "Anakin", "friendId": "TestFriendId" },
+    { "name": "Ahsoka", "friendId": "2609126b" },
+    { "name": "Padme", "friendId": "katy" }
 ]
 
 def register_device(payload: dict) -> None:
