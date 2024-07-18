@@ -2,7 +2,7 @@ from datetime import datetime, UTC
 import pymongo
 
 client = pymongo.MongoClient("mongodb://mongo:27017/")
-client.drop_database("GeoGlow_db")
+#client.drop_database("GeoGlow_db")
 
 db = client["GeoGlow_db"]
 
@@ -13,17 +13,17 @@ daily_col = db["daily"]
 # Setup index to expire documents after 5 minutes
 device_col.create_index({"_timestamp": 1}, expireAfterSeconds = 5 * 60)
 
-device_dummy_data = [
-    { "friendId": "Anakin", "deviceId" : "123", "panelIds": [1,2,3]},
-    { "friendId": "Ahsoka", "deviceId" : "456", "panelIds": [1,2, 3]},
-    { "friendId": "Padme", "deviceId" : "456", "panelIds": [1,2,3]}
-]
-
-friend_dummy_data = [
-    { "name": "Anakin", "friendId": "TestFriendId" },
-    { "name": "Ahsoka", "friendId": "2609126b" },
-    { "name": "Padme", "friendId": "katy" }
-]
+#device_dummy_data = [
+#    { "friendId": "Anakin", "deviceId" : "123", "panelIds": [1,2,3]},
+#    { "friendId": "Ahsoka", "deviceId" : "456", "panelIds": [1,2, 3]},
+#    { "friendId": "Padme", "deviceId" : "456", "panelIds": [1,2,3]}
+#]
+#
+#friend_dummy_data = [
+#    { "name": "Anakin", "friendId": "TestFriendId" },
+#    { "name": "Ahsoka", "friendId": "2609126b" },
+#    { "name": "Padme", "friendId": "katy" }
+#]
 
 def register_device(payload: dict) -> None:
     """
@@ -166,6 +166,6 @@ def get_friends_daily(friendId, deviceId):
     else: 
         return None
     
-for i in range(0, 3):
-    register_device(device_dummy_data[i])
-    friend_col.insert_one(friend_dummy_data[i])
+#for i in range(0, 3):
+#    register_device(device_dummy_data[i])
+#    friend_col.insert_one(friend_dummy_data[i])
