@@ -128,10 +128,14 @@ def __on_api(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
                                 The payload is expected to be a JSON string with keys "friendId" and "command".
     """
     payload = json.loads(msg.payload.decode())
+    command = payload["command"]
     friendId = payload["friendId"]
-    if payload["command"] == "requestDeviceIds":
+    if command == "requestDeviceIds":
         data = db.get_all_friends_data()
         client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(data))
+    if command == "PostFriendID":
+        print("Post friend id")
+        db.register_friend(friendId, payload["name"])
 
 def __process_color_payload(payload: dict) -> dict:
     # TODO: Add further computation of payload here
