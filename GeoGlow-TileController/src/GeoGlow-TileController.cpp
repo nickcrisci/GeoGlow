@@ -173,7 +173,7 @@ void loop() {
             jsonPayload["panelIds"].add(panelId);
         }
 
-        mqttClient.publish("GeoGlow/ping", jsonPayload);
+        mqttClient.publish("GeoGlow/Friend-Service/ping", jsonPayload);
 
         lastPublishTime = millis();
     }

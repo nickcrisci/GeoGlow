@@ -6,6 +6,8 @@ import database as db
 
 SERVICE_TOPIC = "GeoGlow/Friend-Service"
 
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+
 def __get_sub_topics(filename: str) -> list:
     """
     Reads subscription topics and QoS levels from a file.
@@ -42,9 +44,9 @@ def __on_message(client: mqtt.Client, userdata: any, msg: mqtt.MQTTMessage) -> N
         msg (mqtt.MQTTMessage): The received MQTT message object. It contains information about the topic, payload, QoS level, and retain flag.
     """
     topic = msg.topic
-    if topic == f"{SERVICE_TOPIC}/ping":
-        __on_ping(msg)
-    elif topic == f"{SERVICE_TOPIC}/Api":
+    #if topic == f"{SERVICE_TOPIC}/ping":
+    #    __on_ping(msg)
+    if topic == f"{SERVICE_TOPIC}/Api":
         __on_api(client, msg)
     elif "Color/" in topic:
         __on_color(client, msg)
@@ -71,6 +73,7 @@ def __on_connect(client: mqtt.Client, userdata: any, flags: dict, reason_code: m
         sub_topics = __get_sub_topics("mqtt_sub_topics.txt")
         print("Trying to connect to topics: ", sub_topics)
         client.subscribe(sub_topics)
+        
 
 def __on_subscribe(client: mqtt.Client, userdata: any, mid: int, reason_code_list: list, properties: dict) -> None:
     """
@@ -96,7 +99,8 @@ def __on_subscribe(client: mqtt.Client, userdata: any, mid: int, reason_code_lis
         else:
             print(f"Broker granted the following QoS: {reason_code.value}")
 
-def __on_ping(msg: mqtt.MQTTMessage) -> None:
+@client.topic_callback(f"{SERVICE_TOPIC}/ping")
+def __on_ping(client, userdata, msg: mqtt.MQTTMessage) -> None:
     """
     Processes a ping message received on the "GeoGlow/Friend-Service/ping" topic.
 
@@ -109,7 +113,7 @@ def __on_ping(msg: mqtt.MQTTMessage) -> None:
                                 The payload is expected to be a JSON string with keys "friendId" and "deviceId".
     """
     payload = json.loads(msg.payload.decode())
-
+    print("Pinged")
     db.received_controller_ping(payload)
 
 # TODO: The request friendIds currently gets all friends, implement seperate commands for a single friend and all friends
@@ -204,7 +208,7 @@ def __on_color(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
     #client.publish(f"{SERVICE_TOPIC}/{friendId}/{deviceId}", json.dumps(processed_payload))
     client.publish(f"GeoGlow/{friendId}/{deviceId}/color", json.dumps(processed_payload))
 
-def create_and_connect_client() -> mqtt.Client:
+def connect_client():# -> mqtt.Client:
     """
     Creates and connects an MQTT client to the broker.
 
@@ -219,9 +223,8 @@ def create_and_connect_client() -> mqtt.Client:
 
     print(f"Connecting to MQTT broker: {mqtt_broker} on port: {mqtt_port}")
 
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = __on_connect
     client.on_message = __on_message
     client.on_subscribe = __on_subscribe
     client.connect(mqtt_broker, mqtt_port)
-    return client    
+    return client

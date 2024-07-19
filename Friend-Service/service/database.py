@@ -13,18 +13,6 @@ daily_col = db["daily"]
 # Setup index to expire documents after 5 minutes
 device_col.create_index({"_timestamp": 1}, expireAfterSeconds = 5 * 60)
 
-#device_dummy_data = [
-#    { "friendId": "Anakin", "deviceId" : "123", "panelIds": [1,2,3]},
-#    { "friendId": "Ahsoka", "deviceId" : "456", "panelIds": [1,2, 3]},
-#    { "friendId": "Padme", "deviceId" : "456", "panelIds": [1,2,3]}
-#]
-#
-#friend_dummy_data = [
-#    { "name": "Anakin", "friendId": "TestFriendId" },
-#    { "name": "Ahsoka", "friendId": "2609126b" },
-#    { "name": "Padme", "friendId": "katy" }
-#]
-
 def register_device(payload: dict) -> None:
     """
     Registers a new device for a friend by inserting a document into the device collection.
@@ -58,7 +46,7 @@ def received_controller_ping(payload: dict) -> None:
         None
     """
     timestamp = datetime.now(UTC)
-    update = {"$set": {"_timestamp": timestamp}}
+    update = {"$set": {"_timestamp": timestamp, "panelIds": payload["panelIds"]}}
     deviceId = payload["deviceId"]
     update_result = device_col.update_one({"deviceId": deviceId}, update)
 
@@ -109,7 +97,7 @@ def _get_friends_devices(friendId: str) -> list:
     """
     devices = device_col.find({"friendId": friendId})
     friendDevices = [device["deviceId"] for device in devices]
-
+    print(friendDevices)
     if len(friendDevices) == 0:
         return []
     return friendDevices
@@ -165,7 +153,3 @@ def get_friends_daily(friendId, deviceId):
         return friends_daily["color_data"]
     else: 
         return None
-    
-#for i in range(0, 3):
-#    register_device(device_dummy_data[i])
-#    friend_col.insert_one(friend_dummy_data[i])
