@@ -490,7 +490,6 @@ fun FriendSelectionPopup(
                 selectedFriends.forEach {
                     if (it.devices.isNotEmpty()) {
                         mqttClient.publish(it.friendId ?: "-1", it.devices.first(), colorPalette)
-                        //TODO: ist das hier die richtige ID? -> eigene Id oder FriendId??
                     } else {
                         Log.i("Mqtt","Can't publish colors, as no devices are listed.")
                     }
