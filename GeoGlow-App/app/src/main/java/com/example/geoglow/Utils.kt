@@ -2,18 +2,23 @@ package com.example.geoglow
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.os.Build
+import android.util.Log
 import androidx.palette.graphics.Palette
+import com.example.geoglow.color_palette.PaletteGenerator
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
 import org.json.JSONArray
 import org.json.JSONObject
 
 
 @SuppressLint("SimpleDateFormat")
 fun Context.createImageFile(): File {
-    val timeStamp = SimpleDateFormat("yyyy_MM_dd_HH:mm:ss").format(Date())
-    val imageFileName = "JPEG_" + timeStamp + "_"
+    //val timeStamp = SimpleDateFormat("yyyy_MM_dd HH:mm:ss").format(Date())
+    val imageFileName = "JPEG_" //+ timeStamp + "_"
     val image = File.createTempFile(
         imageFileName, /* prefix */
         ".jpg", /* suffix */
@@ -38,31 +43,18 @@ fun transformListToJson(name: String, list: List<Array<Int>>): JSONObject {
     return jsonObject
 }
 
-fun jsonStringToList(jsonString: String): List<Friend> {
-    val friendList = mutableListOf<Friend>()
-    val jsonArray = JSONArray(jsonString)
+fun jsonStringToFriendList(jsonString: String): List<Friend> {
+    val gson = Gson()
+    val friendType = object : TypeToken<List<Friend>>() {}.type
+    val friends: List<Friend> = gson.fromJson(jsonString, friendType)
 
-    for (i in 0 until jsonArray.length()) {
-        val jsonObject = jsonArray.getJSONObject(i)
-        val name = jsonObject.getString("name")
-        val id = jsonObject.getString("id")
-        friendList.add(Friend(name, id))
+    return friends.map { friend ->
+        Friend(
+            name = friend.name,
+            friendId = friend.friendId,
+            devices = friend.devices.toMutableList()
+        )
     }
-
-    return friendList
-}
-
-fun listToJsonString(friendList: List<Friend>): String {
-    val jsonArray = JSONArray()
-
-    for (friend in friendList) {
-        val jsonObject = JSONObject()
-        jsonObject.put("name", friend.name)
-        jsonObject.put("id", friend.id)
-        jsonArray.put(jsonObject)
-    }
-
-    return jsonArray.toString()
 }
 
 fun paletteToRgbList(palette: Palette): List<Array<Int>> {
@@ -93,4 +85,37 @@ fun paletteToRgbList(palette: Palette): List<Array<Int>> {
     darkMuted?.let { convertToRgb(it)?.let { rgbList.add(it) } }
 
     return rgbList
+}
+
+fun extractColorsColorThief(bitmap: Bitmap, colorCount: Int = 10): List<Array<Int>> {
+    try {
+        val colorPalette = PaletteGenerator.compute(bitmap, colorCount)
+        return colorPalette?.map { color ->
+            arrayOf(color[0], color[1], color[2])
+        } ?: emptyList()
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return emptyList()
+    }
+}
+
+fun resizeBitmap(bitmap: Bitmap, factor: Int = 5): Bitmap { //4
+    val width = bitmap.width
+    val height = bitmap.height
+    val scaleWidth = width / factor
+    val scaleHeight = height / factor
+    return Bitmap.createScaledBitmap(bitmap, scaleWidth, scaleHeight, true)
+}
+
+//TODO: rotate image properly
+fun rotateImage(bitmap: Bitmap): Bitmap {
+    Log.i("util", "Build.MANUFACTURER: ${Build.MANUFACTURER}")
+
+    if (Build.MANUFACTURER == "samsung") {
+        val rotationDegrees =  90
+        val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    } else {
+        return bitmap
+    }
 }

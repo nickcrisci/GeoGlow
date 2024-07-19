@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -21,22 +23,17 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         mqttClient = MqttClient(this)
         mqttClient.connect()
+
+        //reset userName and ID manually
+        //SharedPreferencesHelper.resetPreferences(this)
+        //SharedPreferencesHelper.setUser(this, Friend("Katy","-1", mutableListOf()))
 
         setContent {
             GeoGlowTheme {
                 Navigation(viewModel, mqttClient)
             }
-        }
-
-        var uniqueID = SharedPreferencesHelper.getUniqueID(this)
-        if (uniqueID == null) {
-            // Generate a new unique ID, save it, publish it
-            uniqueID = IDGenerator.generateUniqueID()
-            SharedPreferencesHelper.setUniqueID(this, uniqueID)
-            mqttClient.publish(uniqueID, false)
         }
     }
 
