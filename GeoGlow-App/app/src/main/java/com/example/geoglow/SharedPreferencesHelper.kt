@@ -40,4 +40,8 @@ object SharedPreferencesHelper {
             gson.fromJson(it, type)
         } ?: emptyList()
     }
+
+    fun resetPreferences(context: Context) {
+        getPreferences(context).edit().clear().apply()
+    }
 }

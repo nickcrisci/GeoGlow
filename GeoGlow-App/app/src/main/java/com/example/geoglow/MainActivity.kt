@@ -26,6 +26,10 @@ class MainActivity : ComponentActivity() {
         mqttClient = MqttClient(this)
         mqttClient.connect()
 
+        //reset userName and ID manually
+        //SharedPreferencesHelper.resetPreferences(this)
+        //SharedPreferencesHelper.setUser(this, Friend("Katy","-1", mutableListOf()))
+
         setContent {
             GeoGlowTheme {
                 Navigation(viewModel, mqttClient)

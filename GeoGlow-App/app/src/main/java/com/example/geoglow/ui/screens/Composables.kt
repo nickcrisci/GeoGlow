@@ -33,8 +33,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -90,8 +92,10 @@ import com.example.geoglow.R
 import com.example.geoglow.SharedPreferencesHelper
 import com.example.geoglow.createImageFile
 import com.example.geoglow.paletteToRgbList
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import java.util.Objects
+import kotlin.coroutines.coroutineContext
 
 
 @Composable
@@ -110,9 +114,13 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
 
     val galleryLauncher =
         rememberLauncherForActivityResult(contract = CustomGalleryContract()) { uri ->
-        uri?.let(viewModel::setColorState)
-        uri?.let(viewModel::updateColorList)
-        navController.navigate(Screen.ImageScreen.route)
+        if (uri != null) {
+            uri.let(viewModel::setColorState)
+            uri.let(viewModel::updateColorList)
+            navController.navigate(Screen.ImageScreen.route)
+        } else {
+            Log.e("Composables", "no picture chosen")
+        }
     }
     
     val cameraLauncher =
@@ -129,7 +137,11 @@ fun MainScreen(navController: NavController, viewModel: ColorViewModel, mqttClie
     val cameraPermissionLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { success ->
         permissionHandler.onPermissionResult(Manifest.permission.CAMERA, success)
-        if (success) cameraLauncher.launch(imageUri)
+        if (success) {
+            cameraLauncher.launch(imageUri)
+        } else {
+            Log.e("Composables", "no permission for camera")
+        }
     }
 
     if (user == null && showPopup) {
@@ -254,7 +266,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
     val colorList = colorState.colorList
     val colorPalette = palette?.let { paletteToRgbList(it) } ?: emptyList()
     val user: Friend? = SharedPreferencesHelper.getUser(context)
-    val friendList = SharedPreferencesHelper.getFriendList(context)
+    var friendList = SharedPreferencesHelper.getFriendList(context)
     var showPopup by remember { mutableStateOf(false) }
     val tabs = listOf("Android Palette", "Color Thief")
     var tabIndex by remember { mutableStateOf(0) }
@@ -281,7 +293,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
         }
     )
 
-    if (showPopup && friendList.isNotEmpty()) {
+    if (showPopup) {
         FriendSelectionPopup(
             navController,
             viewModel,
@@ -295,7 +307,8 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 35.dp),
+            .padding(start = 10.dp, end = 10.dp, bottom = 0.dp, top = 45.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -350,11 +363,17 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
             onClick = {
                 mqttClient.subscribe(user?.friendId ?: "-1")
                 mqttClient.publish(user?.friendId ?: "-1", null)
-                showPopup = true
+                friendList = SharedPreferencesHelper.getFriendList(context) //TODO: make it clean
+
+                if (friendList.isNotEmpty()) {
+                    showPopup = true
+                } else {
+                    Toast.makeText(context, "You are not connected to your friends yet.", Toast.LENGTH_SHORT).show()
+                }
             },
             modifier = Modifier
                 .align(alignment = Alignment.End)
-                .padding(end = 10.dp)
+                .padding(end = 10.dp, bottom = 10.dp)
                 .size(50.dp)
         ) {
             Icon(
