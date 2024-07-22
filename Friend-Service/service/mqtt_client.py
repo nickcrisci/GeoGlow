@@ -113,7 +113,6 @@ def __on_ping(client, userdata, msg: mqtt.MQTTMessage) -> None:
                                 The payload is expected to be a JSON string with keys "friendId" and "deviceId".
     """
     payload = json.loads(msg.payload.decode())
-    print("Pinged")
     db.received_controller_ping(payload)
 
 # TODO: The request friendIds currently gets all friends, implement seperate commands for a single friend and all friends
@@ -138,7 +137,6 @@ def __on_api(client: mqtt.Client, msg: mqtt.MQTTMessage) -> None:
         data = db.get_all_friends_data()
         client.publish(f"{SERVICE_TOPIC}/Api/{friendId}", json.dumps(data))
     if command == "postFriendId":
-        print("Post friend id")
         db.register_friend(friendId, payload["name"])
 
 def __process_color_payload(payload: dict) -> dict:

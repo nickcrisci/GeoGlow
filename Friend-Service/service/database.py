@@ -2,7 +2,7 @@ from datetime import datetime, UTC
 import pymongo
 
 client = pymongo.MongoClient("mongodb://mongo:27017/")
-#client.drop_database("GeoGlow_db")
+client.drop_database("GeoGlow_db")
 
 db = client["GeoGlow_db"]
 
@@ -97,7 +97,6 @@ def _get_friends_devices(friendId: str) -> list:
     """
     devices = device_col.find({"friendId": friendId})
     friendDevices = [device["deviceId"] for device in devices]
-    print(friendDevices)
     if len(friendDevices) == 0:
         return []
     return friendDevices
@@ -128,6 +127,8 @@ def get_friend_data(friendId: str) -> dict:
         friend = friend_col.find_one({"friendId": friendId}, {'_id': False})
     
     devices = _get_friends_devices(friendId)
+    if len(devices) == 0:
+        return None
     friend["devices"] = devices
     return friend
 
@@ -135,7 +136,9 @@ def get_all_friends_data() -> list:
     friends = []
     cursor = friend_col.find({})
     for friend in cursor:
-        friends.append(get_friend_data(friend["friendId"]))
+        friend_data = get_friend_data(friend["friendId"])
+        if friend_data is not None:
+            friends.append(get_friend_data(friend["friendId"]))
     return friends
 
 def add_to_daily(friendId: str, deviceId: str, colors) -> None:
@@ -151,5 +154,5 @@ def get_friends_daily(friendId, deviceId):
     friends_daily = daily_col.find_one({"friendId": friendId, "deviceId": deviceId})
     if friends_daily:
         return friends_daily["color_data"]
-    else: 
+    else:
         return None
