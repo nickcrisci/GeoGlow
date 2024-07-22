@@ -1,0 +1,4 @@
+TOPIC,QOS
+ping,0
+Api,0
+Color/#, 0

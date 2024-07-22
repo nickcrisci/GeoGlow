@@ -1,4 +1,4 @@
-from mqtt_client import connect_client
+from mqtt.mqtt_client import connect_client
 
 def main():
     client = connect_client()

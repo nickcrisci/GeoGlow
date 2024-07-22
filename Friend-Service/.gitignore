@@ -179,3 +179,4 @@ pyrightconfig.json
 # Nicks Additions:
 mqtt_config.txt
 mqtt_config.env
+mqtt_config.py

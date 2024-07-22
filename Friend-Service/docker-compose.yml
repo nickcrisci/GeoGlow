@@ -7,8 +7,6 @@ services:
   friend-service:
     build: ./service
     image: friend-service
-    env_file:
-      - ./service/mqtt_config.env
     depends_on:
       - mongo
     volumes:
