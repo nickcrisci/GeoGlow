@@ -39,6 +39,12 @@ void setup() {
     delay(10);
 
     UUID uuid;
+
+    uint32_t seed1 = random(999999999);
+    uint32_t seed2 = random(999999999);
+
+    uuid.seed(seed1, seed2);
+    uuid.generate();
     strcpy(deviceId, uuid.toCharArray());
 
     if (SPIFFS.begin()) {
@@ -169,7 +175,7 @@ void loop() {
         jsonPayload["deviceId"] = deviceId;
         jsonPayload["panelsIds"] = JsonArray();
 
-        for (const String panelId: nanoleaf.getPanelIds()) {
+        for (const String& panelId: nanoleaf.getPanelIds()) {
             jsonPayload["panelIds"].add(panelId);
         }
 
