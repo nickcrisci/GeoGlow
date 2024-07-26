@@ -51,7 +51,7 @@ class ColorViewModel(application: Application): AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             getApplication<Application>().applicationContext.contentResolver.openInputStream(uri)?.use { stream ->
                 val bitmap: Bitmap = BitmapFactory.decodeStream(stream)
-                val resizedBitmap = resizeBitmap(bitmap)
+                val resizedBitmap = resizeBitmap(bitmap, 400, 400)
                 val colorList = extractColorsColorThief(resizedBitmap)
 
                 _colorState.update { currentState ->
