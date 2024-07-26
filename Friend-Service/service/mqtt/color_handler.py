@@ -8,13 +8,14 @@ def process_color_payload(payload: dict) -> dict:
     return payload
 
 def __fill_with_duplicates(colors: list, size: int) -> list:
-    filledColors = []
-    for i in range(0, size):
+    filledColors = colors.copy()
+    for i in range(len(colors), size):
         filledColors.append(colors[i % len(colors)])
+    random.shuffle(filledColors)
     return filledColors
 
 def __fill_with_interpolates(colors: list, size: int) -> list:
-    filledColors = colors
+    filledColors = colors.copy()
     while len(filledColors) < size:
         [color1, color2] = random.choices(colors, k=2)
         interpolatedColor = [
@@ -45,7 +46,7 @@ def map_color_tiles(friendId, deviceId, colors) -> dict:
     if len(colors) < numTiles:
         # Different tactics for filling the color list can be applied
         # 2 Examples: Duplicating colors or interpolating colors
-        colors = fill_color_list(colors, numTiles, "interpolate") # Change this line to user other tactics
+        colors = fill_color_list(colors, numTiles, "duplicate") # Change this line to user other tactics
     else:
         colors = colors[:numTiles]
     return dict(zip(tiles, colors))
