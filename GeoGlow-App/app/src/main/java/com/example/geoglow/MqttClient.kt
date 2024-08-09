@@ -102,7 +102,7 @@ class MqttClient(private val context: Context) {
 
         mqttClient.publishWith()
             .topic(pubTopic)
-            .retain(true)
+            //.retain(true)
             .payload(jsonPayload.toString().toByteArray())
             .send()
             .whenComplete { publish, throwable ->
@@ -121,7 +121,7 @@ class MqttClient(private val context: Context) {
 
         mqttClient.publishWith()
             .topic(pubTopic)
-            .retain(true)
+            //.retain(true)
             .payload(jsonPayload.toString().toByteArray())
             .send()
             .whenComplete { publish, throwable ->
