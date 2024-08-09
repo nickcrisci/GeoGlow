@@ -33,16 +33,17 @@ class ColorViewModel(application: Application): AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             getApplication<Application>().applicationContext.contentResolver.openInputStream(uri)?.use { stream ->
                 val bitmap: Bitmap = BitmapFactory.decodeStream(stream)
-                val rotatedImg = rotateImage(bitmap)
-                val palette = Palette.from(bitmap).generate()
+                val resizedBitmap = resizeBitmap(bitmap)
+                val rotatedImg = rotateImage(resizedBitmap)
+                val palette = Palette.from(resizedBitmap).generate()
 
                 _colorState.update { currentState ->
                     currentState.copy(
-                        imageBitmap = if (rotate) rotatedImg.asImageBitmap() else bitmap.asImageBitmap(),
+                        imageBitmap = if (rotate) rotatedImg.asImageBitmap() else resizedBitmap.asImageBitmap(),
                         androidPalette = palette
                     )
                 }
-                Log.i("ViewModel", "colorState updated with bitmap: $bitmap")
+                Log.i("ViewModel", "colorState updated with bitmap: $resizedBitmap")
             }
         }
     }

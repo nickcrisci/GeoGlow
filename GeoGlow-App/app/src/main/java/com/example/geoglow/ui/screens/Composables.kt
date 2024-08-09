@@ -329,19 +329,18 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
                 contentScale = ContentScale.Crop
             )
         } else {
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                contentDescription = "default image",
+            Box(
                 modifier = Modifier
                     .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)
                     .size(290.dp)
                     .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White)
                     .border(
                         1.0.dp,
-                        MaterialTheme.colorScheme.onBackground,
+                        palette?.mutedSwatch?.rgb?.let(::Color)
+                            ?: MaterialTheme.colorScheme.secondary,
                         RoundedCornerShape(16.dp)
-                    ),
-                contentScale = ContentScale.Crop
+                    )
             )
         }
 
@@ -355,7 +354,7 @@ fun ImageScreen(navController: NavController, viewModel: ColorViewModel, mqttCli
         }
 
         when (tabIndex) {
-            0 -> AndroidPalette(palette)
+            0 -> if (palette != null) AndroidPalette(palette) else LoadingAnimation()
             1 -> if (colorList?.isNotEmpty() == true) ColorThiefPalette(colorList) else LoadingAnimation()
         }
 
