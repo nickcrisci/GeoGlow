@@ -111,6 +111,14 @@ fun resizeBitmap(bitmap: Bitmap, width: Int = 500, height: Int = 500): Bitmap {
     return Bitmap.createScaledBitmap(bitmap, width, height, true)
 }
 
+fun resizeBitmap(bitmap: Bitmap): Bitmap {
+    return if (bitmap.width > 2000 || bitmap.height > 2000) {
+        Bitmap.createScaledBitmap(bitmap, 1000, 1000, true)
+    } else {
+        bitmap
+    }
+}
+
 //TODO: rotate image properly
 fun rotateImage(bitmap: Bitmap): Bitmap {
     Log.i("util", "Build.MANUFACTURER: ${Build.MANUFACTURER}")
