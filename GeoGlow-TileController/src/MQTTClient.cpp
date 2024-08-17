@@ -32,8 +32,9 @@ void MQTTClient::loop() {
 void MQTTClient::reconnect() {
     while (!client.connected()) {
         Serial.print("Attempting MQTT connection...");
-        if (client.connect("GeoGlow")) {
-            Serial.println("connected");
+        auto mqttClientId = "GeoGlow-" + String(this->friendId) + "-" + String(this->deviceId);
+        if (client.connect(mqttClientId.c_str())) {
+            Serial.println("connected: " + mqttClientId);
             for (const auto adapter: topicAdapters) {
                 client.subscribe(buildTopic(adapter));
             }
