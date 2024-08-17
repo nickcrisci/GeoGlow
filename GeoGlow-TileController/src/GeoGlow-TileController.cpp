@@ -6,6 +6,7 @@
 #include <WiFiManager.h>
 #include <ArduinoJson.h>
 #include <UUID.h>
+#include <ESP8266mDNS.h>
 #include "MQTTClient.h"
 #include "NanoleafApiWrapper.h"
 
@@ -47,6 +48,7 @@ void setup() {
     uuid.generate();
     strcpy(deviceId, uuid.toCharArray());
 
+
     if (SPIFFS.begin()) {
         Serial.println("mounted file system");
         if (SPIFFS.exists("/config.json")) {
@@ -71,6 +73,18 @@ void setup() {
                 Serial.println("failed to load json config");
             }
             configFile.close();
+        } else {
+            if (MDNS.begin("esp8266") && MDNS.queryService("nanoleafapi", "tcp") > 0) {
+                IPAddress ip = MDNS.IP(0);
+                uint16_t port = MDNS.port(0);
+
+                snprintf(
+                    nanoleafBaseUrl,
+                    sizeof(nanoleafBaseUrl),
+                    "http://%u.%u.%u.%u:%u",
+                    ip[0], ip[1], ip[2], ip[3], port
+                );
+            }
         }
     } else {
         Serial.println("failed to mount FS");
@@ -173,9 +187,9 @@ void loop() {
         JsonDocument jsonPayload;
         jsonPayload["friendId"] = friendId;
         jsonPayload["deviceId"] = deviceId;
-        jsonPayload["panelsIds"] = JsonArray();
+        jsonPayload["panelIds"] = JsonArray();
 
-        for (const String& panelId: nanoleaf.getPanelIds()) {
+        for (const String &panelId: nanoleaf.getPanelIds()) {
             jsonPayload["panelIds"].add(panelId);
         }
 

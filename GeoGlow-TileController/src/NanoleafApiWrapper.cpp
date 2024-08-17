@@ -135,8 +135,8 @@ bool NanoleafApiWrapper::setStaticColors(const JsonObject &doc) {
     for (JsonPair kv: doc) {
         String tileId = kv.key().c_str();
         auto rgb = kv.value().as<JsonArray>();
-        animData += tileId + " 1 " + String(rgb[0].as<int>()) + " " + String(rgb[1].as<int>()) + " " +
-                String(rgb[2].as<int>()) + " 0 " + String(static_cast<int>(floor(random(5, 50)))) + " ";
+        animData += tileId + " 2 " + String(rgb[0].as<int>()) + " " + String(rgb[1].as<int>()) + " " +
+                String(rgb[2].as<int>()) + " 0 " + String(static_cast<int>(floor(random(5, 50)))) + " 0 0 0 0 360 ";
     }
 
     JsonDocument jsonPayload;
